@@ -1,0 +1,543 @@
+---
+subtitle: "TMA4268 Statistical Learning V2021"
+title: "Compulsory exercise 1: Group 27 "
+author: "Maren Bråthen Kristoffersen, Vilde Marie Skårdal Jensen and Viveka Priya Simhan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+  
+  
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE,tidy=TRUE,message=FALSE,warning=FALSE,strip.white=TRUE,prompt=FALSE,
+                      cache=TRUE, size="scriptsize",fig.width=4, fig.height=3)
+```
+
+```{r ,eval=TRUE,echo=FALSE}
+library(rmarkdown) #probably already installed
+library(ggplot2) #plotting with ggplot
+library(ggfortify)  
+library(MASS)
+library(class)
+library(pROC)
+library(plotROC)
+```
+
+
+
+
+# Problem 1
+
+
+```{r, echo=TRUE, eval=TRUE}
+id <- "1X_8OKcoYbng1XvYFDirxjEWr7LtpNr1m" # google file ID
+values <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
+X = values$X
+x0 = values$x0
+beta=values$beta
+sigma=values$sigma
+```
+
+
+## a)
+The expected value of the estimator $\tilde \beta$ is derived the following way
+
+\begin{equation} 
+\text{E}\left[\tilde \beta\right] = \text{E}\left[\left(X^{T}X+\lambda I\right)^{-1} X^T Y\right] = \left(X^T X + \lambda I\right)^{-1} X^T \text{ E}[Y] \\
+= \left(X^T X + \lambda I\right)^{-1} X^T \text{ E}\left[X \beta + \epsilon\right] = \left(X^T X + \lambda I\right)^{-1} X^T X \beta 
+\end{equation}
+
+where $Y$ is the vector of all $Y_i = x_i^T \beta + \epsilon_i$ for $i= 1,...,p$.
+
+
+The variance-covariance matrix of $\tilde \beta$ is 
+
+\begin{equation}
+\text{Cov}\left(\tilde \beta \right) = \text{Cov}\left(\left(X^TX+\lambda I\right)^{-1}X^TY\right)= \left(X^TX+\lambda I\right)^{-1}X^T \text{Cov}(Y)\left(\left(X^TX+\lambda I\right)^{-1}X^T\right)^T \\= 
+\left(X^TX+\lambda I\right)^{-1}X^T \sigma^2\left(\left(X^TX+\lambda I\right)^{-1}X^T\right)^T
+\end{equation}
+
+## b)
+The expected value of $\tilde{f}(x_0) = x_0^T\tilde{\beta}$ is
+\begin{equation}
+\text{E}\left[\tilde{f}(x_0)\right] = \text{E}\left[x_0^T\tilde{\beta}\right] = x_0^T\text{E}\left[\tilde{\beta}\right] = x_0^T\left(X^T X + \lambda I\right)^{-1} X^T X \beta
+\end{equation}
+
+The variance of $\tilde{f}(x_0) = x_0^T\tilde{\beta}$ is
+\begin{equation}
+\text{Var}\left[\tilde{f}(x_0)\right] = \text{Var}\left[x_0^T\tilde{\beta}\right] = x_0^T\text{Var}\left[\tilde{\beta}\right]x_0 \\
+= x_0^T\left(X^TX+\lambda I\right)^{-1}X^T \sigma^2\left(\left(X^TX+\lambda I\right)^{-1}X^T\right)^Tx_0
+\end{equation}
+
+
+## c)
+
+The expected mean square error $MSE$ at $x_0$ can be expressed the following way
+\begin{equation}
+\text{MSE}=\text{E}\left[(y_0 -\tilde{f}(x_0))^2\right] = \left[\text{E}(\tilde{f}(x_0)-f(x_0))\right]^2+\text{Var}(\tilde{f}(x_0))+Var(\epsilon) \\
+= \left[\text{E}\left(\tilde{f}(x_0))-\text{E}(f(x_0))\right)\right]^2+\text{Var}(\tilde{f}(x_0))+Var(\epsilon) \\
+= \left[x_0^T\left(X^T X + \lambda I\right)^{-1} X^T X \beta - x_0^T\beta \right]^2 + x_0^T\left(X^TX+\lambda I\right)^{-1}X^T \sigma^2\left(\left(X^TX+\lambda I\right)^{-1}X^T\right)^Tx_0 + \sigma^2 I
+\end{equation}
+
+where the first term express the bias, the second term the variance and the third and last term the irreducible error which will be used in the following tasks. (unødvendig eller??)
+
+## d)
+```{r, echo = FALSE, fig.width = 7, fig.height = 5, fig.align = "center", out.width = '70%'}
+bias = function(lambda,X,x0,beta)
+{
+  p = ncol(X)
+  value = (t(x0) %*% solve(t(X)%*%X+lambda*diag(p))%*%t(X)%*%X%*%beta-t(x0) %*% beta)^2
+  return(value)
+}
+lambdas = seq(0, 2, length.out = 500)
+BIAS = rep(NA,length(lambdas))
+for (i in 1:length(lambdas)) BIAS[i] = bias(lambdas[i], X, x0, beta)
+dfBias = data.frame(lambdas = lambdas, bias = BIAS)
+ggplot(dfBias, aes(x = lambdas, y = bias)) +
+  geom_line(color = "red")+
+  xlab(expression(lambda))+
+  ylab(expression(bias^2))
+```
+The figure shows that the bias has a minimum value at $\lambda \approx 0.42$ and then increases with higher values of $\lambda$. This is due to the fact that using a shrinkage penalty places additional constraints on the coefficients $\beta_i$ which increase with an increasing value of $\lambda$. This leads to a more rigid model and therefore an increased bias.
+
+## e)
+```{r,eval=TRUE, echo = FALSE, fig.width = 7, fig.height = 5, fig.align = "center", out.width = '70%'}
+variance = function(lambda, X, x0, sigma)
+{
+  p = ncol(X)
+  inv = solve(t(X)%*%X+lambda*diag(p))
+  value =  sigma^2*t(x0)%*%inv%*%t(X)%*%X%*%t(inv)%*%x0
+  return(value)
+}
+lambdas = seq(0, 2, length.out = 500)
+VAR=rep(NA,length(lambdas))
+for (i in 1:length(lambdas)) VAR[i]=variance(lambdas[i], X, x0, sigma)
+dfVar = data.frame(lambdas = lambdas, var = VAR)
+ggplot(dfVar, aes(x = lambdas, y = var))+
+  geom_line(color = "green4")+
+  xlab(expression(lambda))+
+  ylab("variance")
+```
+In the figure above we see that the variance decreases for increasing values of $\lambda$. Again this is due to the fact that a higher value of $\lambda$ leads to a more rigid model which is less affected by changes in the data and thus has a lower variance.
+
+## f)
+```{r,eval=TRUE}
+exp_mse =  BIAS + VAR + sigma^2
+lambdas[which.min(exp_mse)]
+```
+
+```{r, eval=TRUE, echo = FALSE, fig.width = 7, fig.height = 5, fig.align = "center", out.width = '70%'}
+cols = c("exp_mse" = "blue", "bias" = "red", "variance" = "green4")
+dfAll = data.frame(lambda = lambdas, bias = BIAS, var = VAR, exp_mse = exp_mse)
+ggplot(dfAll)+
+  geom_line(aes(x = lambda, y = exp_mse, color = "exp_mse"))+
+  geom_line(aes(x = lambda, y = bias, color = "bias"))+
+  geom_line(aes(x = lambda, y = var, color = "variance"))+
+    xlab(expression(lambda))+
+    ylab(expression(E(MSE)))+
+  theme(legend.title = element_blank())+
+  scale_color_manual(values = cols)
+    
+```
+
+The figure shows that the variance contributes (significantly?) more to the total estimated mean squared error than the bias. As discussed earlier, the use of the shrinkage penalty controls the Bias-Variance trade-off where the bias increases and the variance decreases for higher values of $\lambda$. We can see that the variance decreases most steeply when $\lambda$ is small and we have seen earlier that the bias increases for values of $\lambda$ higher than approximately $0.42$.
+
+
+
+# Problem 2
+```{r, eval=TRUE, echo=TRUE}
+#read files
+id <- "1yYlEl5gYY3BEtJ4d7KWaFGIOEweJIn__" # google file ID
+d.corona <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=T)
+```
+
+#### a) Inspect your data
+```{r}
+d.corona$deceased <- factor(d.corona$deceased, levels=c('0','1'),
+  labels=c('Non-deceased','Deceased'))
+d.corona$country <- factor(d.corona$country, levels=c('France','indonesia', 'japan', 'Korea'), labels=c('France','Indonesia', 'Japan', 'Korea'))
+d.corona$sex <- factor(d.corona$sex, levels=c('female', 'male'), labels=c('Female', 'Male'))
+```
+
+```{r}
+table(d.corona$deceased)
+table(d.corona$country, d.corona$sex)
+table(d.corona$deceased, d.corona$sex)
+#data from France
+d.corona.france = d.corona[ which(d.corona$country == "France"),]
+table(d.corona.france$deceased, d.corona.france$sex)
+```
+
+
+#### b) Appropriate regression model
+```{r, eval = TRUE, echo = TRUE}
+covid.glm = glm(deceased ~ sex + age + country, data = d.corona, family = "binomial") 
+```
+The data set consists of categorical predictors with binary response where we are interested in infering(?) the relationship between the predictors and the probability to decease of covid-19. For that purpose, a logistic regression model is chosen as the appropriate model ..where??.. the binary response $Y_i$ follows a Bernoulli distribution with probability of decease $p_i$. 
+
+
+##### (i)
+The following code is used to find the probability that a 75 years old man from Korea will die due to the covid-19 infection. Here, the ``  person_vec`` is the $\textbf{x}$ in the equation 
+
+$$ \eta = \beta_0x_0 + \beta_1x_1 + \beta_2x_2 + \beta_3x_3 + \beta_4x_4 + \beta_5x_5, $$
+where $x_0 = 1$ and the $\beta_i$ for $i = 0, 1,...,5$ are the estimates for the $\beta$-coefficients from the logistic regression, respectively ``r covid.glm$coefficients ``.
+
+
+```{r}
+person_vec <- c(1, 1, 75, 0, 0, 1) #the first 1 for the intercept \beta_0
+eta_person <- covid.glm$coefficients %*% person_vec
+p_man = exp(eta_person) / (1+ exp(eta_person))
+p_man
+```
+The probability that a 75 years old man from Korea deceases of covid-19 is ``r p_man`` based on the logistic regression model. 
+
+
+##### (ii)
+To investigate in whether there are evidence from the data set that males have a higher probability to die than women have, we look at the summary of the coefficients in the logistic regression model and observe the estimates and p-values of the coefficients.
+
+```{r}
+summary(covid.glm)$coefficients
+```
+<!-- From this, it is clear that the intercept in the regression model seems to explain(??) the dataset to a large degree due to the very low p-value. --> <- Fjerne dette? 
+
+The estimate for $\beta_1$, i.e the gender is male, is ``r  covid.glm$coefficients[2] `` which means that the $\eta$-value will increase with this value if for a male compared to a female, which again means that the probability of deceasing of covid-19 gets higher. Based on this estimate and the fact that the p-value is relatively low, ``r summary(covid.glm)$coefficients[2,4]``, we conclude that there is evidence that males have a higher probability to decease.
+
+ Skal vi ha med noe om at den kun skal ganges med 1 eller 0 i forhold til age ??? og hva lav p verdi betyr... 
+
+##### (iii)
+We will now investigate whether the country of residence has an influence on the probability to die. For this task, we again observe the summary of the coefficients printed in the previous task.
+It seems that one is least likely to die if one is from Japan. Residence from Japan, the coefficient estimate of ``r covid.glm$coefficients[5] `` implies reduced probability to decease, and the p-value is low. One can also see that there is a corresponding tendency/relation for Korea as well, but the estimate of the $\beta$ it not as significant(utslagsgivenes) as for Japan, and the p-value a (en størrelsesorden) higher. For Indonesia, it is harder to tell if there is ...... 
+
+##### (iv)
+Below, we have determined the odds ratio by using the estimates from the logistic regression line to calculate two $\eta$-values, where a arbitrary individual is compared to an individual with identical covariates except that age predictor is increased by 10 years. 
+```{r}
+eta_0 <- covid.glm$coefficients  %*% c(1, 1, 10, 1, 0, 0)
+eta_10 <- covid.glm$coefficients %*% c(1, 1, 20, 1, 0, 0)
+
+p_0 <- exp(eta_0) / (1 + exp(eta_0))
+p_10 <- exp(eta_10) / (1 + exp(eta_10))
+
+odds_ratio <- (p_10/(1-p_10))/(p_0/(1-p_0))
+odds_ratio 
+
+simplified <- exp(covid.glm$coefficients[3]*10) #exp of estimate of age coefficient times 10 yrs.
+simplified
+
+```
+This result in that the odds ratio value is ``r odds_ratio``. This corresponds which with the term derived in class, namely that the odds ratio can be simplified to the expression $e^{\beta_2 \cdot 10}$ resulting in ``r simplified``. The odds ratio mean that the probability of deceasing of covid-19 increases with ... % if one is 10 older...
+
+
+#### c) 
+
+##### (i)
+To investigate whether age is a greater risk factor for males than for females, we fit a logistic regression model including an interaction term between the predictors age and sex.
+```{r}
+covid_sex_age.glm <- glm(deceased ~ age*sex + country, data = d.corona, family = "binomial")
+summary(covid_sex_age.glm)$coefficients
+```
+
+We do not find evidence that age is a greater risk factor for males than females, since the interaction term ``r  covid_sex_age.glm$coefficients[7]`` is close to zero, meaning that the two predictors are more or less independent of each other. Additionally, the p-value is ``r summary(covid_sex_age.glm)$coefficients[7,4]``, meaning that there is ... 
+
+
+##### (ii)
+To investigate whether age is a greater risk factor for the French population than for the Indonesian population, we fit a logistic regression model including an interaction term between the predictors age and country.
+
+```{r}
+covid_country_age.glm <- glm(deceased ~ age*country + sex, data = d.corona, family = "binomial")
+summary(covid_country_age.glm)$coefficients
+```
+
+The interaction term between age and residence in Indonesia has estimate ``r covid_country_age.glm$coefficients[7]``, with p-value ``r summary(covid_country_age.glm)$coefficients[7,4] ``. ... So there is evidence that age is a greater risk factor for the French population than for the Indonesian population. 
+
+#### d) Multiple choice 
+```{r}
+covid.lda <- lda(deceased ~., data= d.corona) 
+covid.lda_pred = predict(covid.lda, newdata = d.corona)$class 
+covid.lda_prob = predict(covid.lda, newdata = d.corona)$posterior
+table(predict= covid.lda_pred, real = d.corona$deceased )
+
+covid.qda <- qda(deceased ~., data= d.corona)
+covid.qda_pred = predict(covid.qda, newdata = d.corona)$class
+covid.qda_prob = predict(covid.qda, newdata = d.corona)$posterior
+table(predict =covid.qda_pred, real = d.corona$deceased)
+
+```
+<!-- LDA training error: $\frac{105}{2010} = 0.05223881$ -->
+
+<!-- QDA training error: $\frac{238}{2010} = 0.118408$ -->
+
+<!-- Sensitivity LDA: $\frac{0}{105} = 0$ -->
+<!-- Specificity LDA: $\frac{1905}{1905} = 1$ -->
+
+<!-- Sensitivity QDA: $\frac{21}{105} = 0.2$ -->
+<!-- Specificity QDA: $\frac{1751}{1905} = 0.9191601$ -->
+
+(i) TRUE
+(ii) TRUE
+(iii) TRUE
+(iv) FALSE
+
+
+# Problem 3
+
+## a) 
+```{r, echo=TRUE, eval=TRUE}
+#read file
+id <- "1i1cQPeoLLC_FyAH0nnqCnnrSBpn05_hO" # google file ID
+diab <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
+t = MASS::Pima.tr2
+train = diab$ctrain
+test = diab$ctest
+```
+
+`
+
+```{r, echo TRUE, eval=TRUE}
+logReg = glm(diabetes~., data = train, family = "binomial")
+summary(logReg)
+```
+
+
+(i)
+\begin{equation}
+\log\left(\frac{p_i}{1-p_i}\right) = \log\left(\frac{\frac{\exp(\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7})}{ 1+ 
+\exp(\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7})}}{1-\frac{\exp(\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7})}{ 1+ 
+\exp(\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7})}}\right) \\
+=\log\left(\frac{e^{\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7}}}{1+ 
+e^{\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7}}-e^{\beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \dots + \beta_7 x_{i7}}}\right) 
+= \log(e^{\beta_0+\beta_1x_{i1}+\beta_2 x_{i2} + \dots + \beta_7 x_{i7}}) \\
+=\beta_0+\beta_1x_{i1}+\beta_2 x_{i2} + \dots + \beta_7 x_{i7}
+\end{equation}
+
+
+
+
+(ii)
+```{r, echo = TRUE, eval = TRUE}
+prediction = predict(logReg, newdata = test, type = "response")
+prediction = ifelse(prediction > 0.5, 1, 0) #using 0.5 as the cut-off probability 
+
+table(predicted = prediction, test = test$diabetes)
+```
+
+The sensitivity is $\frac{\text{#True Positive}}{\text{#Positive}} = \frac{48}{48+29} \approx 0.62$ and the specificity is $\frac{\text{#True Negative}}{\text{#Negative}} = \frac{137}{137+18} \approx 0.88$.
+
+## b)
+
+(i)
+$\pi_k$ is the prior probability for the class $k$, i.e. the probability that a random observation belongs to class $k$. We do not know the prior probabilities, but we can estimate them by $\hat{\pi}_k = \frac{n_k}{n}$, the number of training observations belonging to class $k$th,$n_k$, divided by the total number of the training data, $n$. In this data set we have to classes, has diabetes (1) and does not have diabetes (0). Using the training data we find the following estimates for the prior probabilities:  $\hat{\pi}_0 = \frac{n_0}{n} = \frac{200}{300} = \frac{2}{3}$ and $\hat{\pi}_1 = \frac{n_1}{n} = \frac{100}{300} = \frac{1}{3}$. 
+
+$\mu_k$ is the mean value vector for class $k$, with $u_{ki}$ being the mean value of the $i^{th}$ covariate for observations belonging to class $k$. Again we do not know $\mu_k$, but we can estimate it using the observations in the training data, so that $\frac{1}{n_k} \sum_{i:y_i=k}X_i$ where $X_i^T$ is the $i^{th}$ row in the design matrix. For this particular data set, we will have two mean value vectors, $\mu_0$ and $\mu_1$, with 7 elements each.
+
+$\Sigma$ is the pooled covariance matrix for both classes, which we assume to be equal for both classes. This is estimated by first estimating the covariance matrices $\Sigma_k$ for each class separately, using a weighted average of the sample variance for class $k$ so that $\hat{\Sigma}_k = \frac{1}{n_k-1}\sum_{i:y_i=k}(X_i-\hat{\mu}_k)(X_i-\hat{\mu}_k)^T$, and then estimate $\Sigma$ by $\hat{\Sigma}=\sum_{k=1}^{K}\frac{n_k-1}{n-K} \cdot \hat{\Sigma}_k$.
+
+$f_k(x)$ is the conditional distribution/density (hva blir mest riktig her?) function of the covariates for class $k$, that is $f_k(x)=\text{Pr}\{X=x| Y=k\}$.It is generally difficult to estimate $f_k(x)$ so we normally tend to make assumptions about its form. In this particular problem we are given the form of $f_k(x)$.
+
+
+
+(ii)
+The difference between LDA and QDA is that LDA assumes that all the $K$ classes share the same covariance matrix $\Sigma$ while QDA allows for different covariance matrices for the different classes. This makes for a more flexible model which might be better to describe a more complex relationship, but also has greater risk of overfitting.  
+
+```{r, echo = TRUE, eval = TRUE}
+
+
+#LDA
+diabetes.lda = lda(diabetes ~., data = train)
+diabetes.lpred = predict(diabetes.lda, test)
+table(predicted = diabetes.lpred$class, test = test$diabetes)
+
+threshold.lda = ifelse(diabetes.lpred$posterior[,2] >=0.5, 1, 0)
+
+table(predicted = threshold.lda, test = test$diabetes)
+
+#QDA
+diabetes.qda = qda(diabetes~., data = train)
+diabetes.qpred = predict(diabetes.qda, test)
+table(predicted = diabetes.qpred$class, test = test$diabetes)
+
+# threshold.qda = ifelse(diabetes.qpred$posterior[,1] >=0.5, 0, 1)
+
+# table(predicted = threshold.qda, test = test$diabetes)
+```
+## c)
+
+(i)
+In KNN approach one uses the K nearest points to classify a new observation. (Bruker Euclidian distance) Finner de K nærmeste naboene også bruker deres klassifikasjon til å bestemme klassifikasjonen til den nye observasjonen.Den nye observasjonen får klassen til den vanligste klassen blant de K nærmeste **Burde skrive noe mer her!!**
+
+(ii)
+Hvis man velger en høy K-verdi så vil grensen nærme seg en rett linje, som vil være det samme som Bayes boundary, hvis man velger K = 1 vil det være den nærmeste naboen som bestemmer hva den nye observasjonen blir classifisert som. En lav K vil føre til en høy varians og lav bias og motsatt for en høy K. 
+
+Man kjører for ulike verdier av k, predict for test data og plotter testfeilen for de ulike verdiene av k. Velger k-verdi med lavest testfeil.
+
+(iii)
+
+```{r, echo=TRUE, eval=TRUE}
+trainMatrix = cbind(train$npreg, train$glu, train$bp, train$skin, train$bmi, train$ped, train$age)
+testMatrix = cbind(test$npreg, test$glu, test$bp, test$skin, test$bmi, test$ped, test$age)
+knn.predict = knn(train = trainMatrix, test = testMatrix, cl = train$diabetes, k = 25, prob = T)
+table(predicted = knn.predict, test = test$diabetes)
+```
+The sensitivity is $\frac{\text{#True Positive}}{\text{#Positive}} = \frac{41}{41+36} \approx 0.53$ and the specificity is $\frac{\text{#True Negative}}{\text{#Negative}} = \frac{144}{144+11} \approx 0.93$.
+
+
+## d)
+```{r, echo = TRUE, eval=TRUE}
+
+prob.lda = diabetes.lpred$posterior[,2]
+lda_roc = roc(response = test$diabetes, predictor = prob.lda, legacy.axes = TRUE)
+
+
+
+prob.qda = diabetes.qpred$posterior[,2]
+qda_roc = roc(response = test$diabetes, predictor = prob.qda, legacy.axes = TRUE)
+
+
+prob.KNN = ifelse(knn.predict == 0, 1 - attributes(knn.predict)$prob, attributes(knn.predict)$prob)
+KNN_roc = roc(response = test$diabetes, predictor = prob.KNN, legacy.axes = TRUE)
+
+prob.logReg = predict(logReg, newdata = test, type = "response")
+logReg_roc = roc(response = test$diabetes, predictor = prob.logReg, legacy.axes = TRUE)
+
+
+```
+
+
+```{r auto, echo = FALSE, fig.width = 7, fig.height = 5, fig.align = "center", out.width = '70%'}
+plot(1-lda_roc$specificities, lda_roc$sensitivities, col = "blue", pch = 1, xlab = "1-Specificity", ylab = "Sensitivity", main = "ROC curve", lwd = 2)
+
+points(1-qda_roc$specificities, qda_roc$sensitivities, col = "green", pch = 4)
+
+points(1-KNN_roc$specificities, KNN_roc$sensitivities, col = "red", pch = 17)
+
+points(1-logReg_roc$specificities, logReg_roc$sensitivities, col = "orange", pch = 6)
+
+txt <- c("AUC: ","lda: ", round(lda_roc$auc, digits = 4), " qda: ", round(qda_roc$auc, digits = 4), " KNN: ", round(KNN_roc$auc, digits = 4), " logReg: ", round(logReg_roc$auc, digits = 4))
+txt <- paste(txt, collapse = "")
+
+lines(x = c(0,1), y = c(0,1), col="grey", lty = 2)
+
+legend("center", legend  = txt, col = "black", bty = "n")
+legend('topleft', col = c("blue", "green", "red", "orange"), pch = c (1, 4, 17, 6), legend = c("lda", "qda", "KNN", "logReg")) 
+
+
+```
+
+The AUC-value for the three different methods are fairly similar, but the value for LDA is the largest. The larger AUC, the better the model preformes. Hence, does LDA preform better then QDA and KNN. 
+An interpretable model would tell us something about how the response variable reacts to changes in the covariates. In the KNN we do not obtain any information about how the covarites affect the response variable. Hence, we want to use either LDA or QDA, and since LDA has a higher AUC this will be better to use. (Den siste delen er ikke helt riktig, vi må tenke på logReg også, se mail!!)
+
+# Problem 4
+
+## a)
+
+In this task, we will show that the linear regression model $Y = X \beta$ for the LOOCV statistic can be computed by the formula 
+
+$$ 
+\text{CV} =  \frac{1}{N}\sum_{i=1}^N\left(\frac{y_i - \hat{y}_i}{1-h_i}\right)^2 .
+$$  
+
+We start with reformulation $y_{(-i)}$ in terms of the hat vector??? $h_i$ defined as $h_i = x_i^T (X^T X)^{-1} x_i$.
+
+\begin{equation}
+
+\hat{y}_{(-i)} = \mathbf{x}_i^T\hat{\beta}_{(-i)} = \mathbf{x}_i^T\left(X_{(-i)}^TX_{(-i)}\right)^{-1}X_{(-i)}^T\mathbf{y}_{(-i)} = \mathbf{x}_i^T\left(X^TX - \mathbf{x}_i\mathbf{x}_i^T\right)^{-1}\left(X^T\mathbf{y} - \mathbf{x}_iy_i\right) \\
+
+= \mathbf{x}_i^T\left((X^TX)^{-1} + \frac{(X^TX)^{-1}\mathbf{x}_i\mathbf{x}_i^T(X^TX)^{-1}}{1-\mathbf{x}_i^T(X^TX)^{-1}\mathbf{x}_i}\right)\left(X^T\mathbf{y} - \mathbf{x}_iy_i\right) \\
+= \left(\frac{(1-h_i)\mathbf{x}_i^T(X^TX)^{-1} +\mathbf{x}_i^T(X^TX)^{-1}\mathbf{x}_i\mathbf{x}_i^T(X^TX)^{-1}}{1-h_i}\right)\left(X^T\mathbf{y} - \mathbf{x}_iy_i\right) \\
+
+= \left(\frac{\mathbf{x}_i^T(X^TX)^{-1} - \mathbf{x}_i^T(X^TX)^{-1}\mathbf{x}_i\mathbf{x}_i^T(X^TX)^{-1} +\mathbf{x}_i^T(X^TX)^{-1}\mathbf{x}_i\mathbf{x}_i^T(X^TX)^{-1}}{1-h_i}\right)\left(X^T\mathbf{y} - \mathbf{x}_iy_i\right) \\
+
+= \frac{\mathbf{x}_i^T(X^TX)^{-1}\left(X^T\mathbf{y} - \mathbf{x}_iy_i\right)}{1-h_i} = \frac{\mathbf{x}_i^T(X^TX)^{-1}X^T\mathbf{y} - \mathbf{x}_i^T(X^TX)^{-1}\mathbf{x}_iy_i}{1-h_i} \\
+
+= \frac{\mathbf{x}_i^T\hat{\beta}-h_iy_i}{1-h_i} =  \frac{\hat{y}_i-h_iy_i}{1-h_i}
+
+\end{equation}
+
+This result in that $y_{(-i)}$ is $y_{(-i)} = \frac{\hat{y}_i-h_iy_i}{1-h_i}$. In LOOCV one calutualtes the MSE for each validation/iteration. Hence, the mean square error for iteration $i$ can be expressed as follows
+
+\begin{equation}
+
+\text{MSE}_i = \left(y_i-\hat{y}_{(-i)}\right)^2 = \left(y_i-\frac{\hat{y}_i-h_iy_i}{1-h_i}\right)^2 =\left(\frac{(1-h_i)y_i - \hat{y}_i+h_iy_i}{1-h_i}\right)^2 = \left(\frac{y_i - \hat{y}_i}{1-h_i}\right)^2 
+
+\end{equation}
+
+This results in that the LOOCV in case of linear regression can be formulated as 
+\begin{equation}
+\text{CV} = \frac{1}{N}\sum_{i=1}^N \text{MSE}_i = \frac{1}{N}\sum_{i=1}^N\left(\frac{y_i - \hat{y}_i}{1-h_i}\right)^2 
+\end{equation}
+
+
+## b)
+i) FALSE 
+<!-- (the LOOCV will generally have a lower bias than 10-fold CV, as each training set has a higher number of observations, but the variance will be higher as the training sets will be more correlated.) -->
+ii) TRUE 
+<!-- (s.180 i boka) -->
+iii) TRUE
+iv) FALSE 
+<!-- (2-fold CV will first use set 1 to train and set 2 to validate, and then set 3 to train and set 1 to validate. In the validation-set approach the data will simply be split in two and one set used for training and the other for validating.) -->
+
+
+# Problem 5
+
+```{r}
+id <- "19auu8YlUJJJUsZY8JZfsCTWzDm6doE7C" # google file ID
+d.bodyfat <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=T)
+```
+
+
+## a)
+```{r,echo=TRUE, eval=TRUE}
+bodyfat.lm <- lm(bodyfat ~ age + weight + bmi, data = d.bodyfat)
+summary(bodyfat.lm)
+```
+The linear regression model ``bodyfat.lm`` has here been fitted with age, weight and BMI as predictor variables. The coefficient of determination $R^2$ of the model is ``r summary(bodyfat.lm)$r.squared``, stating that these three predictors explains about $58\%$ of the response's variance.
+
+
+## b)
+(i) In the following code $1000$ bootstrap samples of the $R^2$ is generated.
+```{r}
+library(boot)
+set.seed(4268)
+
+B = 1000
+
+Rsquared_func <- function(data, index){
+  return(summary(lm(bodyfat ~ age + weight + bmi, data = data[index,]))$r.squared)
+}
+
+estimates = rep(NA, B)
+
+for (b in 1:B){
+  indices = sample(1:243, 243, replace = TRUE)
+  thisboot = Rsquared_func(d.bodyfat, indices)
+  estimates[b] = thisboot
+}
+
+mean(estimates)
+sd(estimates)
+```
+
+
+(ii) A plot of the respective distribution of the bootstrapped $R^2$-values.
+```{r}
+cols = c("Normal" = "red")
+data = data.frame(Rsquared = estimates, norm_den = dnorm(estimates, mean(estimates), sd(estimates)))
+
+ggplot(data) + geom_histogram(aes(x = Rsquared, y = ..density..), fill = "grey", color = "black") + geom_line(aes(x=Rsquared, y = norm_den,  color = "Normal")) + theme(legend.title = element_blank())+
+  scale_color_manual(values = cols)
+```
+
+
+(iii) The following code block returns the interval of the $95%$ confidence interval. 
+```{r}
+c(mean(estimates)-qnorm(0.975)*sd(estimates), mean(estimates)+qnorm(0.975)*sd(estimates))
+```
+The confidence interval of the $R^2$ is $[$``r mean(estimates)-qnorm(0.975)*sd(estimates)``, ``r mean(estimates)+qnorm(0.975)*sd(estimates)``$]$
+
+(iv) Interpretation of the confidence interval
+
+We know that $R^2 \in [0,1]$, and the length of the confidence interval is $0.157$ which corresponds to about $15.7%$ of the possible values for $R^2$. Hence, we think that this confidence interval is rather big. 
+
+We observe that the confidence interval is of length $0.157$. Since $R^2$ is a measure on the proportion of variance explained by the model, $R^2 \in [0,1]$. This means that the confidence interval contains $15.7%$ of the possible values for $R^2$. 

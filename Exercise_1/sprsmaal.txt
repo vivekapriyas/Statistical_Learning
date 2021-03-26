@@ -1,0 +1,14 @@
+-hvor mye tekst feks i forthold til å kun presentere tabeller (2a)?
+
+-2c: vi deler dataen i to, er det riktig tenkemåte? 
+interaction term?
+
+-3b 
+	i): vi er usikker på hva som skal diskuteres
+	ii) riktig vurdering av cutoff?
+
+-3d: hvordan vi skal vurdere performance
+
+-5b 
+	iii): Derive?? holder det å bruke innebygde 				funksjoner i boot-library eller må man utlede noe?
+	iv) hva skal vi tolke?
