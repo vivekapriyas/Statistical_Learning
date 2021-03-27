@@ -1,0 +1,206 @@
+---
+subtitle: "TMA4268 Statistical Learning V2021"
+title: "Compulsory exercise 2: Group 27 "
+author: "Maren Bråthen Kristoffersen, Vilde Marie Skårdal Jensen and Viveka Priya Simhan"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE,tidy=TRUE,message=FALSE,warning=FALSE,strip.white=TRUE,prompt=FALSE,
+                      cache=TRUE, size="scriptsize",fig.width=4, fig.height=3)
+```
+
+
+
+```{r}
+library("knitr") #probably already installed
+library("rmarkdown") #probably already installed
+library("ggplot2") #plotting with ggplot
+library("ggfortify")
+library("leaps")
+library("glmnet")
+library("tree")
+library("caret")
+library("randomForest")
+library("readr")
+library("e1071")
+library("dplyr")
+library("gbm")
+```
+
+```{r test, include=FALSE}
+options(tinytex.verbose = TRUE)
+warnings()
+```
+
+### Problem 1
+
+### a)
+(i) regularization? FALSE?
+(ii) TRUE
+(iii) TRUE
+(iv) 
+
+
+```{r, echo=FALSE, eval=TRUE}
+id <- "1iI6YaqgG0QJW5onZ_GTBsCvpKPExF30G"
+catdat <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=T)
+```
+```{r, echo=FALSE, eval=TRUE}
+set.seed(4268)
+train.ind = sample(1:nrow(catdat), 0.5 * nrow(catdat))
+catdat.train = catdat[train.ind, ]
+catdat.test = catdat[-train.ind, ]
+```
+
+
+### b) Best subset selection
+```{r, echo=TRUE, eval=TRUE}
+numPred = 17  #ehh "along with 16 other variables, wrong??"
+BSS = regsubsets(birds~., data = catdat.train, nvmax = numPred)
+BSS_summary = summary(BSS)
+
+#plot illustrating different model choice criterions
+par(mfrow=c(2,2))
+plot(BSS_summary$rss, xlab = "Numbers of variables", ylab = "RSS", type ="l") 
+
+plot(BSS_summary$bic, xlab = "Numbers of variables", ylab = "BIC", type ="l")
+#also here the models that minimize bic  6, 7, 5, 8.... 
+BSS_best_bic = which.min(BSS_summary$bic)
+points(BSS_best_bic, BSS_summary$bic[BSS_best_bic], col = "red", cex = 2, pch = 20)
+
+plot(BSS_summary$adjr2, xlab = "Numbers of variables", ylab = "Adjusted R-squared", type ="l")
+BSS_best_adjr2 = which.max(BSS_summary$adjr2)
+points(BSS_best_adjr2, BSS_summary$adjr2[BSS_best_adjr2], col = "red", cex = 2, pch = 20)
+
+plot(BSS_summary$cp,xlab = "Numbers of variables", ylab = "Cp", type ="l")
+BSS_best_cp = which.min(BSS_summary$cp)
+points(BSS_best_cp, BSS_summary$cp[BSS_best_cp], col = "red", cex = 2, pch = 20)
+
+graphics.off()
+
+#plot illustrating which parameters that is used in the prefered model
+plot(BSS, scale = "bic")
+plot(BSS, scale = "adjr2") #this plot shows that many models have about the same maximum value of adjr2, 
+
+
+#linear regression using model criterion BIC
+LinReg_BIC <- lm(birds~ wetfood + daily.playtime + children.13 + urban + bell + daily.outdoortime, data = catdat.train)
+summary(LinReg_BIC)
+#here one sees that the second best model, i.e. the one using only five would omit children.13. 
+
+#fancy way of finding the linear regression using LF RecSW6
+numPred_BSS_bic <- which.min(BSS_summary$bic)
+variables <- names(coef(BSS, id = numPred_BSS_bic))
+variables <- variables[!variables %in% "Intercept"]
+BSS_formula <- as.formula(BSS$call[[2]]) #???
+BSS_design_matrix <- model.matrix(BSS_formula, catdat.train)[, variables]
+BSS_data_train <- data.frame(birds = catdat.train$birds, BSS_design_matrix)
+
+LinReg_BIC_fancy <- lm(formula = BSS_formula, BSS_data_train)
+summary(LinReg_BIC_fancy) 
+#^ gives the same linear regression except for a change in the intercept
+
+#Linear regression using adjusted r squared... to clever i believe...
+#LinReg_AdjR2 <- lm(birds~weight + dryfood + wetfood + owner.income + daily.playtime + fellow.cats + owner.age + children.13 + urban + bell + dogs + daily.outdoortime + neutered, data = catdat)
+#summary(LinReg_AdjR2)
+
+
+
+#make predictions on the test set
+BSS_design_matrix_test <- model.matrix(BSS_formula, catdat.test)[, variables]
+BSS_predictions <- predict(object = LinReg_BIC, newdata = as.data.frame(BSS_design_matrix_test)) #HÆÆ her måtte jeg ha den linreggen jeg laga enkelt siden denne inneholdt intercept
+
+
+
+
+#compute test squared errors
+BSS_squared_errors <- (catdat.test$birds -BSS_predictions)^2
+squared_errors_1<- data.frame(BSS_squared_errors=BSS_squared_errors)
+
+#the test MSE
+MSE_BSS <- mean(BSS_squared_errors)
+MSE_BSS
+```
+Choose the best subset based on the BIC model choice criterion. 
+Why
+This results in the following method
+
+
+
+
+### c) Lasso Regression
+```{r}
+x.train <- model.matrix(birds~., data = catdat.train)
+y.train <- catdat.train$birds
+x.test <- model.matrix(birds~., data = catdat.test)
+y.test <- catdat.test$birds
+
+lasso_mod <- glmnet(x.train, y.train, alpha = 1)
+summary(lasso_mod)
+
+set.seed(1)
+cv.out = cv.glmnet(x.train, y.train, alpha = 1)
+plot(cv.out)
+
+best_lambda_lasso <- cv.out$lambda.min
+best_lambda_lasso
+
+lasso_predictions = predict(lasso_mod, s = best_lambda_lasso, newx= x.test)
+lasso_square_errors <- as.numeric((lasso_predictions - y.test)^2)
+squared_errors_2 <- data.frame(lasso_square_errors = lasso_square_errors, squared_errors_1)
+
+#the test MSE
+MSE_lasso <- mean(lasso_square_errors)
+MSE_lasso
+```
+
+### d) 
+What happens when $\lambda \to \infty$ ?
+- For increased values for lambda, the slope gets smaller and smaller until the slope equals zero. 
+- In comparasion to Rigde regression, Lasso regressen can shrink the slope all the way to zero whilst Ridge regression only can shrink the slope asymptotically close to zero. So parameters that it not good to estimate the respose can be completely erased from the model. 
+- So it is a bit better then ridge ar reducing the variance in models that contain a lot of useless variables. Rigde is better when most variables are usefull. 
+What happens when $\lambda =0$ ?
+The Lasso Regression line will be the same as the least squared regression line
+
+### e)
+```{r}
+mean(BSS_squared_errors)
+mean(lasso_square_errors)
+
+#model containing only the intercept
+
+#simple/ordinary linear regression
+simple_linreg <- lm(birds~., data = catdat.train)
+SLR_predictions <- predict(simple_linreg, newdata = catdat.test)
+
+SLR_squared_errors <- (catdat.test$birds - SLR_predictions)^2
+
+MSE_SLR <-mean(SLR_squared_errors)
+MSE_SLR
+
+#a model with only intercept
+intercept_linreg <- lm(birds~1, data = catdat.train)
+summary(intercept_linreg)
+#the intercept is only the mean of all birds eaten by the cats. 
+
+#how to find this?
+MSE_ILR <- 0
+
+```
+
+### f)
+```{r}
+mse_values <- matrix(c(MSE_BSS, MSE_lasso, MSE_SLR, MSE_ILR), ncol = 1, byrow = TRUE)
+colnames(mse_values) <- c("the test MSE")
+rownames(mse_values) <- c("Best Subset Selection", "Lasso Regression", "Simple Linear Regression", "Intercept Linear Regression")
+mse_values <- as.table(mse_values)
+mse_values
+```
+
+
