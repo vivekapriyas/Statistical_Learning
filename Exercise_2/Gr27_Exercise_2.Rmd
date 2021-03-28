@@ -203,4 +203,41 @@ mse_values <- as.table(mse_values)
 mse_values
 ```
 
+### Problem 2
+
+### a)
+(i) TRUE
+(ii) TRUE
+(iii) FALSE
+(iv) FALSE
+
+### b)
+
+
+### c)
+```{r,fig.height=6,fig.width=12}
+
+pr.train <- catdat.train[c("birds", "daily.outdoortime")]
+deg = 1:10
+
+plot(pr.train, col ='darkgrey', main='Polynomial regression')
+co = rainbow(length(deg))
+
+
+MSE.pr <- rep('numeric',lenght=length(deg))
+for (d in deg) {
+  mod <- lm(birds ~ poly(daily.outdoortime,d),pr.train)
+  
+  lines(cbind(pr.train$daily.outdoortime,mod$fit)[order(pr.train$daily.outdoortime),],col=co[d])
+
+  pred <- predict(mod,pr.train)
+  MSE.pr[d] <- mean((pred-pr.train$birds)^2)
+  
+}
+legend("topright",legend = paste("d=",deg),lty=1,col=co)
+
+plot(deg,MSE.pr,type="o",xlab="degree",ylab="MSE",main="Training MSE")
+```
+
+
 
