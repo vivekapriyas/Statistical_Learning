@@ -240,4 +240,89 @@ plot(deg,MSE.pr,type="o",xlab="degree",ylab="MSE",main="Training MSE")
 ```
 
 
+### Problem 3
 
+### a)
+(i) TRUE
+(ii) TRUE
+(iii) FALSE
+(iv) FALSE
+
+### b)
+The three will have a split at age < 81.5 and a spilt at country: Indonesia, japan, korea. (Her er jeg litt usikker på hvordan man skal forklare treet). This is the pruned three since the length of the branches says something about how much the RSS decrease when one goes alongside that branch. When we make a regression three we want the RSS to be as small as possible. Hence, we want to keep the branches which are the longest. (Veldig dårlig forklarning, men er sånn ish dette vi vil si tror jeg.)
+
+### c) 
+
+```{r}
+id <- "1Fv6xwKLSZHldRAC1MrcK2mzdOYnbgv0E" # google file ID
+d.diabetes <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
+d.train=d.diabetes$ctrain
+d.test=d.diabetes$ctest
+
+d.train$diabetes = factor(d.train$diabetes, levels=c('0','1'),labels=c('0','1'))
+d.test$diabetes = factor(d.test$diabetes, levels=c('0','1'),labels=c('0','1'))
+
+response.test = d.test$diabetes
+```
+
+(i)
+```{r}
+tree.diabetes = tree(diabetes ~., data = d.train)
+
+plot(tree.diabetes)
+text(tree.diabetes, pretty = 0)
+
+yhat.tree = predict(tree.diabetes, newdata = d.test, type = "class")
+misclass.tree = table(yhat.tree, response.test)
+misclass.tree
+
+1 - sum(diag(misclass.tree))/sum(misclass.tree)
+
+set.seed(1)
+cv.diabetes = cv.tree(tree.diabetes, K = 10, FUN = prune.misclass)
+tree.min = which.min(cv.diabetes$dev)
+best = cv.diabetes$size[tree.min]
+best
+plot(cv.diabetes$size, cv.diabetes$dev, type = "b")
+points(best, cv.diabetes$dev[tree.min], col = "red", pch = 20)
+
+
+prune.diabetes = prune.misclass(tree.diabetes, best = best)
+plot(prune.diabetes)
+text(prune.diabetes, pretty = 0)
+
+yhat.prune = predict(prune.diabetes, newdata = d.test, type = "class")
+
+misclass.prune = table(yhat.prune, response.test)
+misclass.prune
+
+1 - sum(diag(misclass.prune))/sum(misclass.prune)
+
+```
+
+```{r}
+set.seed(1)
+oob.err = double(7)
+test.err = double(7)
+for (mtry in 1:7){
+  rf.fit = randomForest(diabetes~., data = d.train, mtry=mtry, ntree = 500, importance = TRUE)
+  oob.err[mtry] = rf.fit$err.rate[500]
+  yhat.fit = predict(rf.fit, newdata = d.test)
+  misclass.fit = table(yhat.fit, response.test)
+  test.err[mtry] = 1 - sum(diag(misclass.fit))/sum(misclass.fit)
+}
+
+matplot(1:mtry, cbind(test.err, oob.err), pch = 20, col = c("red", "blue"), type = "b", ylab = "...", xlab = "m")
+legend("topright", legend = c("Test", "OOB"), pch = 20, col = c("red", "blue"))
+
+#set.seed(1)
+rf.diabetes = randomForest(diabetes~., data = d.train, mtry = 3, ntree = 500, importance = TRUE)
+yhat.rf = predict(rf.diabetes, newdata = d.test)
+misclass.rf = table(yhat.rf, response.test)
+misclass.rf
+1 - sum(diag(misclass.rf))/sum(misclass.rf)
+importance(rf.diabetes)
+varImpPlot(rf.diabetes)
+```
+
+Since glu and bmi has the highest MeanDecreaseAccuracy and MeanDecreaseGini are they the most influential predictors of diabetes. This corresponds well to the three we made in 3c) (i) where the two first splits are based on glu and bmi. 
