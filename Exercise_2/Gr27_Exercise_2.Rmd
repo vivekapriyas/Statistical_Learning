@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE,tidy=TRUE,message=FALSE,warning=FALSE,strip.wh
 
 
 
-```{r}
+```{r, echo=FALSE, eval=TRUE}
 library("knitr") #probably already installed
 library("rmarkdown") #probably already installed
 library("ggplot2") #plotting with ggplot
@@ -40,11 +40,17 @@ warnings()
 
 ### Problem 1
 
-### a)
-(i) regularization? FALSE?
+### a) Multiple choice 1
+(i) TRUE/FALSE Påstand: Regualarizaton will reduce test error, but not training error:
+-  By constraining or shrinking the estimated coefficients, we can often substantially reduce the variance at the cost of a negligible increase in bias. This can lead to substantial improvements in the accuracy with which we can predict the response for observations not used in model training.
+- It may not be immediately obvious why such a constraint should improve the fit, but it turns out that shrinking the coefficient estimates can significantly reduce their variance.
+
 (ii) TRUE
 (iii) TRUE
-(iv) 
+
+(iv) FALSE Påstand: PCR can be used for variable selection
+-  However, as a result of the way PCR is implemented, the final model is more difficult to interpret because it does not perform any kind of variable selection or even directly produce coefficient estimates. (page 257)
+- We note that even though PCR provides a simple way to perform regression using M<p predictors, it is not a feature selection method. This is because each of the M principal components used in the regression is a linear combination of all p of the original features.
 
 
 ```{r, echo=FALSE, eval=TRUE}
@@ -60,148 +66,153 @@ catdat.test = catdat[-train.ind, ]
 
 
 ### b) Best subset selection
+For this task, we will perform best subset selection to obtain a reduced linear regression model based on the ``catdat`` dataset. Below, we have used the function ``regsubsets()``to implement the best subset selection method.
 ```{r, echo=TRUE, eval=TRUE}
-numPred = 17  #ehh "along with 16 other variables, wrong??"
+numPred = 17
 BSS = regsubsets(birds~., data = catdat.train, nvmax = numPred)
 BSS_summary = summary(BSS)
+```
 
+By observing the graphs below, that is illustrating the optimal numbers of predictors for different criterions, we want to determine which model choice criterion to use. 
+```{r, echo=FALSE, eval=TRUE}
 #plot illustrating different model choice criterions
-par(mfrow=c(2,2))
 plot(BSS_summary$rss, xlab = "Numbers of variables", ylab = "RSS", type ="l") 
 
 plot(BSS_summary$bic, xlab = "Numbers of variables", ylab = "BIC", type ="l")
-#also here the models that minimize bic  6, 7, 5, 8.... 
-BSS_best_bic = which.min(BSS_summary$bic)
+BSS_best_bic <- which.min(BSS_summary$bic)
 points(BSS_best_bic, BSS_summary$bic[BSS_best_bic], col = "red", cex = 2, pch = 20)
 
-plot(BSS_summary$adjr2, xlab = "Numbers of variables", ylab = "Adjusted R-squared", type ="l")
+plot(BSS_summary$adjr2, xlab = "Numbers of variables", ylab = "R_{adj}^2", type ="l")
 BSS_best_adjr2 = which.max(BSS_summary$adjr2)
 points(BSS_best_adjr2, BSS_summary$adjr2[BSS_best_adjr2], col = "red", cex = 2, pch = 20)
 
 plot(BSS_summary$cp,xlab = "Numbers of variables", ylab = "Cp", type ="l")
 BSS_best_cp = which.min(BSS_summary$cp)
 points(BSS_best_cp, BSS_summary$cp[BSS_best_cp], col = "red", cex = 2, pch = 20)
+```
 
-graphics.off()
+The first plot shows that the RSS increases for increasing number of predictors, which is expected since RSS does not punish the model for having many predictors. When wanting to minimize the Bayesian Information Criterion (BIC), one sees that the subset containing six predictors turns out as the best subset. For the adjusted R-squared and $C_p$, one can see that there are no specific subset that stands out to be the best, and it looks like all subsets containing between 5 and 17 predictors results in approximately the same model performance. However, all the plots indicates that the reduced model should include at least the five predictors ``r names(coef(BSS, 5))``. Kept in mind that we want our model to be as simple as possible, we have chosen BIC as model choice criterion. 
 
+
+The above plot illustrates the best subsets ranked based on BIC, where the best subset in at the top.
+
+``` {r, echo=FALSE, eval=TRUE}
 #plot illustrating which parameters that is used in the prefered model
 plot(BSS, scale = "bic")
-plot(BSS, scale = "adjr2") #this plot shows that many models have about the same maximum value of adjr2, 
+coef(BSS, BSS_best_bic)
+```
+The above plot illustrates the best subsets ranked based on BIC, where the best subset in at the top. Thus, the selected variables is  ``wetfood``, ``daily.playtime``, ``children.13``, ``urban``, ``bell`` and ``daily.outdoortime``.
 
 
+To determine the mean square error we use this reduced linear regression model to predict the number of birds eaten by cats. 
+``` {r, echo=TRUE, eval=TRUE}
 #linear regression using model criterion BIC
-LinReg_BIC <- lm(birds~ wetfood + daily.playtime + children.13 + urban + bell + daily.outdoortime, data = catdat.train)
-summary(LinReg_BIC)
-#here one sees that the second best model, i.e. the one using only five would omit children.13. 
-
-#fancy way of finding the linear regression using LF RecSW6
-numPred_BSS_bic <- which.min(BSS_summary$bic)
-variables <- names(coef(BSS, id = numPred_BSS_bic))
-variables <- variables[!variables %in% "Intercept"]
-BSS_formula <- as.formula(BSS$call[[2]]) #???
-BSS_design_matrix <- model.matrix(BSS_formula, catdat.train)[, variables]
+kept_predictors <- names(coef(BSS, id = BSS_best_bic))
+kept_predictors <- kept_predictors[!kept_predictors %in% "(Intercept)"]
+BSS_design_matrix <- model.matrix(birds~., catdat.train)[, kept_predictors]
 BSS_data_train <- data.frame(birds = catdat.train$birds, BSS_design_matrix)
 
-LinReg_BIC_fancy <- lm(formula = BSS_formula, BSS_data_train)
-summary(LinReg_BIC_fancy) 
-#^ gives the same linear regression except for a change in the intercept
-
-#Linear regression using adjusted r squared... to clever i believe...
-#LinReg_AdjR2 <- lm(birds~weight + dryfood + wetfood + owner.income + daily.playtime + fellow.cats + owner.age + children.13 + urban + bell + dogs + daily.outdoortime + neutered, data = catdat)
-#summary(LinReg_AdjR2)
-
-
+LinReg_BIC <- lm(birds~., BSS_data_train)
 
 #make predictions on the test set
-BSS_design_matrix_test <- model.matrix(BSS_formula, catdat.test)[, variables]
-BSS_predictions <- predict(object = LinReg_BIC, newdata = as.data.frame(BSS_design_matrix_test)) #HÆÆ her måtte jeg ha den linreggen jeg laga enkelt siden denne inneholdt intercept
-
-
-
+BSS_design_matrix_test <- model.matrix(birds~., catdat.test)[, kept_predictors]
+BSS_predictions <- predict(LinReg_BIC, newdata = as.data.frame(BSS_design_matrix_test))
 
 #compute test squared errors
-BSS_squared_errors <- (catdat.test$birds -BSS_predictions)^2
-squared_errors_1<- data.frame(BSS_squared_errors=BSS_squared_errors)
+BSS_squared_errors <- (catdat.test$birds - BSS_predictions)^2
+squared_errors <- data.frame(BSS_squared_errors = BSS_squared_errors)
 
 #the test MSE
 MSE_BSS <- mean(BSS_squared_errors)
 MSE_BSS
 ```
-Choose the best subset based on the BIC model choice criterion. 
-Why
-This results in the following method
-
-
-
+The test mean square error for the reduced model using best subset selection with 6 predictors is ``r MSE_BSS``. 
 
 ### c) Lasso Regression
+Now, we are going to obtain a lasso regression model of the dataset ``catdat``.  
 ```{r}
-x.train <- model.matrix(birds~., data = catdat.train)
+#make matrices of the training and testing data
+x.train <- model.matrix(birds~., data = catdat.train)[, -1]
 y.train <- catdat.train$birds
-x.test <- model.matrix(birds~., data = catdat.test)
+x.test <- model.matrix(birds~., data = catdat.test)[,-1]
 y.test <- catdat.test$birds
 
+#fits a genelarized linar model with lasso penalty.
 lasso_mod <- glmnet(x.train, y.train, alpha = 1)
-summary(lasso_mod)
 
+#k-fold cross validation to choose lambda
 set.seed(1)
 cv.out = cv.glmnet(x.train, y.train, alpha = 1)
 plot(cv.out)
 
-best_lambda_lasso <- cv.out$lambda.min
-best_lambda_lasso
+bestlam.Lasso<- cv.out$lambda.min
 
-lasso_predictions = predict(lasso_mod, s = best_lambda_lasso, newx= x.test)
+lasso_predictions = predict(lasso_mod, s = bestlam.Lasso, newx= x.test)
 lasso_square_errors <- as.numeric((lasso_predictions - y.test)^2)
-squared_errors_2 <- data.frame(lasso_square_errors = lasso_square_errors, squared_errors_1)
+squared_errors_lasso<- data.frame(lasso_square_errors = lasso_square_errors, squared_errors)
+
+#determine the coefficients used in the lasso regression
+lasso.coef = predict(lasso_mod, type = "coefficients", s = bestlam.Lasso)[1:18,]
+all_coefs = lasso.coef
+nonzero_coefs = all_coefs[all_coefs!=0]
 
 #the test MSE
 MSE_lasso <- mean(lasso_square_errors)
 MSE_lasso
 ```
+For this method, $\lambda$ is chosen using cross-validation, where the $\lambda$ that minimizes the cross-validated error is selected and was found to be $\lambda = $ ``r bestlam.Lasso ``. 
+
+MÅ SI NOE MER OM DENNE KROSSVALIDERINGA. 
+
+
+A beneficial property of the lasso regression is that predictors can be shrinked to all the way to zero, meaning that parameters that is not good to estimate for the response can be completely erased from the model. In our case, lasso regression uses the predictors ``r names(lasso.coef[lasso.coef!=0])`` and get rid of the predictors ``r names(lasso.coef[lasso.coef == 0])``.
+
+The test mean square error for the lasso regression model is ``r MSE_lasso``. 
+
+
 
 ### d) 
-What happens when $\lambda \to \infty$ ?
-- For increased values for lambda, the slope gets smaller and smaller until the slope equals zero. 
-- In comparasion to Rigde regression, Lasso regressen can shrink the slope all the way to zero whilst Ridge regression only can shrink the slope asymptotically close to zero. So parameters that it not good to estimate the respose can be completely erased from the model. 
-- So it is a bit better then ridge ar reducing the variance in models that contain a lot of useless variables. Rigde is better when most variables are usefull. 
-What happens when $\lambda =0$ ?
-The Lasso Regression line will be the same as the least squared regression line
+
+For increased values of $\lambda$ the slopes gets smaller and smaller until they reach zero as $\lambda \to \infty$. This means that one is left with a model containing only the intercept. On the other hand, when $\lambda =0$ the lasso regression line will be the same as for the least squared regression line, i.e. the full multiple linear regression, since the term that provides for penalization vanishes. 
 
 ### e)
-```{r}
-mean(BSS_squared_errors)
-mean(lasso_square_errors)
+We will now show that the test MSE of the best subset selection model and the lasso regression model indeed are better  than the test MSE for the model with only intercept and the full model. We find these test MSE's the following way
+```{r, echo=TRUE, eval=TRUE }
+#determine MSE for a model containing only the intercept
+ILR <- lm(birds~1, data = catdat.train)
 
-#model containing only the intercept
+ILR_squared_errors <- (catdat.test$birds - summary(ILR)$coefficients[1])^2
 
-#simple/ordinary linear regression
-simple_linreg <- lm(birds~., data = catdat.train)
-SLR_predictions <- predict(simple_linreg, newdata = catdat.test)
+MSE_ILR <- mean(ILR_squared_errors)
 
-SLR_squared_errors <- (catdat.test$birds - SLR_predictions)^2
 
-MSE_SLR <-mean(SLR_squared_errors)
-MSE_SLR
+#determine MSE for a multiple linear regression
+MLR <- lm(birds~., data = catdat.train)
 
-#a model with only intercept
-intercept_linreg <- lm(birds~1, data = catdat.train)
-summary(intercept_linreg)
-#the intercept is only the mean of all birds eaten by the cats. 
+MLR_predictions <- predict(MLR, newdata = catdat.test)
+MLR_squared_errors <- (catdat.test$birds - MLR_predictions)^2
 
-#how to find this?
-MSE_ILR <- 0
-
+MSE_MLR <- mean(MLR_squared_errors)
 ```
+The test mean square errors for respectively the model containing only intercept and the multiple linear regression model were found to be ``r MSE_ILR`` and ``r MSE_MLR``. Both of these values are greater than the once obtained for best subset selection with BIC as model criteria and lasso regression. Hence, the models from b) and c) results in better predictions than both the full model and the model with no predictors. 
+
+Kanskje dra en sammenheng til at penalty ved lasso regression er hensiktsmessig. 
+
 
 ### f)
-```{r}
-mse_values <- matrix(c(MSE_BSS, MSE_lasso, MSE_SLR, MSE_ILR), ncol = 1, byrow = TRUE)
+```{r, echo=FALSE, eval = TRUE}
+mse_values <- matrix(c(MSE_BSS, MSE_lasso, MSE_MLR, MSE_ILR), ncol = 1, byrow = TRUE)
 colnames(mse_values) <- c("the test MSE")
-rownames(mse_values) <- c("Best Subset Selection", "Lasso Regression", "Simple Linear Regression", "Intercept Linear Regression")
+rownames(mse_values) <- c("Best Subset Selection", "Lasso Regression", "Multiple Linear Regression", "Intercept Linear Regression")
 mse_values <- as.table(mse_values)
 mse_values
 ```
+
+From this tabulate, one sees that mean square errors for 
+
+- It turns out that the model with only intercept performs a much worse than the others. This is due to that.. 
+
+
 
 ### Problem 2
 
@@ -326,3 +337,29 @@ varImpPlot(rf.diabetes)
 ```
 
 Since glu and bmi has the highest MeanDecreaseAccuracy and MeanDecreaseGini are they the most influential predictors of diabetes. This corresponds well to the three we made in 3c) (i) where the two first splits are based on glu and bmi. 
+
+
+### Problem 4
+```{r, echo=FALSE, eval=TRUE}
+id <- "1x_E8xnmz9CMHh_tMwIsWP94czPa1Fpsj" # google file ID
+d.leukemia <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=T)
+```
+```{r, echo=FALSE, eval=TRUE}
+set.seed(2399)
+t.samples <- sample(1:60,15,replace=F)
+d.leukemia$Category <- as.factor(d.leukemia$Category) 
+d.leukemia.test <- d.leukemia[t.samples,]
+d.leukemia.train <- d.leukemia[-t.samples,]
+```
+
+
+### Problem 5
+```{r, echo=FALSE, eval=TRUE}
+id <- "1VfVCQvWt121UN39NXZ4aR9Dmsbj-p9OU" # google file ID
+GeneData <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=F)
+colnames(GeneData)[1:20] = paste(rep("H", 20), c(1:20), sep = "")
+colnames(GeneData)[21:40] = paste(rep("D", 20), c(1:20), sep = "")
+row.names(GeneData) = paste(rep("G", 1000), c(1:1000), sep = "")
+GeneData = t(GeneData)
+GeneData <- scale(GeneData)
+```
