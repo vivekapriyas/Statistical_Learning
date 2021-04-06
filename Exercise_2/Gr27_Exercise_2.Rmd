@@ -430,6 +430,51 @@ table.leukemia.test2
 (ii) FALSE
 (iii) FALSE
 (iv) FALSE ??? (får en PCA for hver kovariat? får ikke minimert informasjonsrommet?)
+
+### b)
+##### (i)
+```{r, echo=FALSE, eval=TRUE}
+set.seed(1)
+x1 = c(1, 2, 0, 4, 5, 6)
+x2 = c(5, 4, 3, 1, 1, 2)
+
+n = 6
+K = 2
+
+
+
+clusters = sample(1:K, n, replace = TRUE)
+df = data.frame(x1,x2,clusters = as.factor(clusters))
+ggplot(df, aes(x1,x2, color=clusters)) +geom_point()
+```
+##### (ii)
+```{r, echo=FALSE, eval=TRUE}
+centroid.cluster1_x1 = mean(df$x1[df$clusters == 1])
+centroid.cluster1_x2 = mean(df$x2[df$clusters == 1])
+centroid.cluster2_x1 = mean(df$x1[df$clusters == 2])
+centroid.cluster2_x2 = mean(df$x2[df$clusters == 2])
+
+df.centroid = data.frame(x1 = c(centroid.cluster1_x1, centroid.cluster2_x1), x2 =c(centroid.cluster1_x2, centroid.cluster2_x2), clusters = as.factor(c(1,2)))
+
+ggplot() + geom_point(data = df, aes(x1,x2, color=clusters)) + geom_point(data = df.centroid, aes(x1,x2, fill = clusters), size = 5, shape = 21, color = "black")
+```
+##### (iii)
+```{r, echo=FALSE, eval=TRUE}
+for (i in 1:n){
+  euclid.cluster1 = (df$x1[i] - df.centroid$x1[1])^2 + (df$x2[i] - df.centroid$x2[1])^2
+  euclid.cluster2 = (df$x1[i] - df.centroid$x1[2])^2 + (df$x2[i] - df.centroid$x2[2])^2
+  if (euclid.cluster1 < euclid.cluster2){
+    df$clusters[i] = 1
+  }
+  else{
+    df$clusters[i] = 2
+  }
+}
+
+ggplot() + geom_point(data = df, aes(x1,x2, color=clusters))
+```
+
+### c)
 ```{r, echo=FALSE, eval=TRUE}
 id <- "1VfVCQvWt121UN39NXZ4aR9Dmsbj-p9OU" # google file ID
 GeneData <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=F)
