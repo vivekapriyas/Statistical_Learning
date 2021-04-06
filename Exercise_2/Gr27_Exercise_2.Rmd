@@ -362,10 +362,12 @@ d.leukemia.train <- d.leukemia[-t.samples,]
 
 
 ##### (i)
-Since we have more covariates then observations. We will be able to completely separate the to classes. Other approach??
+A SVM is a more suitable approach than logistic regression for this dataset since we have p>>1 and therefore always can find a separating hyperplane, excepting exact feature ties.
+
+One could use hinge loss/logistic regression loss with a penalty term instead of a SVM. 
 
 ##### (ii)
-
+The paper suggests using ensemble learning with SVMs to do feature selection on genomic data through elimation. That is, using bootstrapping multiple SVM models are built and then aggregated to form one final model which is used to eliminate genomic features unimportant for patient classification.
 
 ##### (iii)
 
@@ -421,7 +423,28 @@ table.leukemia.test2
 
 ```
 
+### c)
 
+The polynomial kernel for the feature space with inputs $X_1$ and $X_2$ and degree $d=2$ is 
+\begin{align*}
+  K(\boldsymbol{x}_i, \boldsymbol{x}_{i'}) &=(1+\sum_{j=1}^2x_{ij}x_{i'j})^2 = (1 + x_{i1}x_{i'1} + x_{i2}x_{i'2})^2 \\
+  &= 1 + 2x_{i1}x_{i'1} + 2x_{i2}x_{i'2} + (x_{i1}x_{i'1})^2 + 2x_{i1}x_{i'1}x_{i2}x_{i'2} + (x_{i2}x_{i'2})^2.
+\end{align*}
+This can be written as 
+\begin{align*}
+    K(\boldsymbol{x}_i, \boldsymbol{x}_{i'}) &= h_1(x)h_1(x') + h_2(x)h_2(x') + h_3(x)h_3(x') + h_4(x)h_4(x') + h_5(x)h_5(x') + h_6(x)h_6(x') \\
+    &= \sum_{j=1}^6 h_j(x)h_j(x') = \langle h(x),h(x') \rangle,
+\end{align*}
+
+where 
+\begin{align*}
+    h_1(x)h_1(x') &= 1 \implies h_1(x) = 1 \\
+    h_2(x)h_2(x') &= 2x_{i1}x_{i'1} \implies h_2(x) = \sqrt{2}x_{i1}\\
+    h_3(x)h_3(x') &= 2x_{i2}x_{i'2}  \implies h_3(x) = \sqrt{2}x_{i2}\\
+    h_4(x)h_4(x') &= x_{i1}^2x_{i'1}^2 \implies h_4(x) = x_{i1}^2\\
+    h_5(x)h_5(x') &= 2x_{i1}x_{i2}x_{i'1}x_{i'2} \implies h_5(x) = \sqrt{2}x_{i1}x_{i2}\\
+    h_6(x)h_6(x') &= x_{i2}^2x_{i'2}^2 \implies h_6(x) = x_{i2}^2.
+\end{align*}
 
 # Problem 5
  
