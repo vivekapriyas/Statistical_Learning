@@ -1,0 +1,27 @@
+problem 1
+a) (i) hva menes med regularization
+
+problem 3
+c) 
+(i)
+-set.seed(1)  gir samme tre når vi bruker cost-complexity pruning. 
+-skal vi rapportere misclassification error for treet før eller etter pruning
+
+(ii)
+-igjen: hvor skal man sette set.seed(1)
+-skal man prøve å finne den beste selv eller bare bruke m=sqrt(p=7)
+
+problem 4
+b) hva skjer med hintet. hvor skal man bruke cross-validation?
+
+
+problem 5
+a)
+(iv) tenker man får en PC for hver kovariat, ingen dimensjonsreduksjon. Derfor ikke hjelpsomt. 
+
+c +d) får at alle klassifiserer alt rett. alle gene som er enten diseased eller healthy havner i samme cluster.
+Virker som alle er like gode.
+
+e) 
+(i) plottet blir veldig uoversiktlig. redusert tilsvarende som i øvingen, men litt vanskelig å skjønne hva som skjer da. Ikke fått til å fargelegge.
+
