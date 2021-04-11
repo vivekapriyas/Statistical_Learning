@@ -454,6 +454,7 @@ where
 (iii) FALSE
 (iv) FALSE ??? (får en PCA for hver kovariat? får ikke minimert informasjonsrommet?)
 
+
 ### b)
 ##### (i)
 ```{r, echo=FALSE, eval=TRUE}
@@ -507,6 +508,54 @@ row.names(GeneData) = paste(rep("G", 1000), c(1:1000), sep = "")
 GeneData = t(GeneData)
 GeneData <- scale(GeneData)
 ```
+
+
+
+```{r}
+#hierarchical clustering Euclidean distance
+par(mfrow=c(2,3))
+CE_hclust = hclust(dist(GeneData), method = "complete")
+plot(CE_hclust, main = "Complete Linkage, Euclidean", xlab = "", sub = "", cex=.9)
+
+SE_hclust = hclust(dist(GeneData), method = "single")
+plot(SE_hclust, main = "Single Linkage, Euclidean", xlab = "", sub = "", cex=.9)
+
+AE_hclust = hclust(dist(GeneData), method = "average")
+plot(AE_hclust, main = "Average Linkage, Euclidean", xlab = "", sub = "", cex=.9, xlim = c(40,50))
+
+
+#hierarchical clustering using correlation-based distance
+correlation_dist = as.dist(1-cor(t(GeneData)))
+CC_hclust = hclust(correlation_dist, method = "complete")
+plot(CC_hclust, main = "Complete Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
+
+SC_hclust = hclust(correlation_dist, method = "single")
+plot(SC_hclust, main = "Single Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
+
+AC_hclust = hclust(correlation_dist, method = "average")
+plot(AC_hclust, main = "Average Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
+```
+
+
+#### d) 
+```{r}
+#cut the clusters in two groups
+CE_2groups =  cutree(CE_hclust, 2)
+
+SE_2groups =  cutree(SE_hclust, 2)
+
+AE_2groups =  cutree(AE_hclust, 2)
+
+CC_2groups = cutree(CC_hclust, 2)
+
+SC_2groups = cutree(SC_hclust, 2)
+
+AC_2groups = cutree(AC_hclust, 2)
+
+```
+
+
+
 
 ### e)
 ##### (i)
