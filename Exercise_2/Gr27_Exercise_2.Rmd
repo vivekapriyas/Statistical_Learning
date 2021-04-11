@@ -507,3 +507,28 @@ row.names(GeneData) = paste(rep("G", 1000), c(1:1000), sep = "")
 GeneData = t(GeneData)
 GeneData <- scale(GeneData)
 ```
+
+### e)
+##### (i)
+```{r, echo=FALSE, eval=TRUE}
+pca.GeneData <- prcomp(GeneData,scale = TRUE) 
+
+#i)
+biplot(pca.GeneData,scale=0, cex=0.5)
+
+GeneData.loading <- pca.GeneData$rotation[,1:2]
+informative_loadings <- rbind(
+  head(GeneData.loading[order(GeneData.loading[,1],decreasing = TRUE),]),
+  head(GeneData.loading[order(GeneData.loading[,2],decreasing = TRUE),])
+)
+
+biplot(x=pca.GeneData$x[,1:2],y=informative_loadings,scale=0,cex=0.5)
+```
+
+##### (ii)
+```{r, echo =FALSE,eval=TRUE}
+pca.var <- pca.GeneData$sdev^2
+pve <- pca.var/sum(pca.var)
+explained_var <- sum(pve[1:5])
+```
+The first 5 PCs explain `r round(explained_var*100,2)`% of the variance. 
