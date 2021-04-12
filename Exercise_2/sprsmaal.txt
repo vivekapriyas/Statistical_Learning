@@ -20,7 +20,7 @@ a)
 (iv) tenker man får en PC for hver kovariat, ingen dimensjonsreduksjon. Derfor ikke hjelpsomt. 
 
 c +d) får at alle klassifiserer alt rett. alle gene som er enten diseased eller healthy havner i samme cluster.
-Virker som alle er like gode.
+Virker som alle er like gode. hva det er vi skal se på for å bedømme hvilken linkage og distance measure som er ønskelig
 
 e) 
 (i) plottet blir veldig uoversiktlig. redusert tilsvarende som i øvingen, men litt vanskelig å skjønne hva som skjer da. Ikke fått til å fargelegge.
