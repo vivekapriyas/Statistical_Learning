@@ -41,7 +41,9 @@ warnings()
 ### Problem 1
 
 ### a) Multiple choice 1
-(i) TRUE/FALSE Påstand: Regualarizaton will reduce test error, but not training error:
+(i) TRUE
+
+Påstand: Regualarizaton will reduce test error, but not training error:
 -  By constraining or shrinking the estimated coefficients, we can often substantially reduce the variance at the cost of a negligible increase in bias. This can lead to substantial improvements in the accuracy with which we can predict the response for observations not used in model training.
 - It may not be immediately obvious why such a constraint should improve the fit, but it turns out that shrinking the coefficient estimates can significantly reduce their variance.
 
@@ -290,7 +292,7 @@ misclass.tree
 1 - sum(diag(misclass.tree))/sum(misclass.tree)
 
 set.seed(1)
-cv.diabetes = cv.tree(tree.diabetes, K = 10, FUN = prune.misclass)
+cv.diabetes = cv.tree(tree.diabetes, K = 10)
 tree.min = which.min(cv.diabetes$dev)
 best = cv.diabetes$size[tree.min]
 best
@@ -312,21 +314,6 @@ misclass.prune
 ```
 
 ```{r}
-set.seed(1)
-oob.err = double(7)
-test.err = double(7)
-for (mtry in 1:7){
-  rf.fit = randomForest(diabetes~., data = d.train, mtry=mtry, ntree = 500, importance = TRUE)
-  oob.err[mtry] = rf.fit$err.rate[500]
-  yhat.fit = predict(rf.fit, newdata = d.test)
-  misclass.fit = table(yhat.fit, response.test)
-  test.err[mtry] = 1 - sum(diag(misclass.fit))/sum(misclass.fit)
-}
-
-matplot(1:mtry, cbind(test.err, oob.err), pch = 20, col = c("red", "blue"), type = "b", ylab = "...", xlab = "m")
-legend("topright", legend = c("Test", "OOB"), pch = 20, col = c("red", "blue"))
-
-#set.seed(1)
 rf.diabetes = randomForest(diabetes~., data = d.train, mtry = 3, ntree = 500, importance = TRUE)
 yhat.rf = predict(rf.diabetes, newdata = d.test)
 misclass.rf = table(yhat.rf, response.test)
@@ -452,7 +439,7 @@ where
 (i) TRUE (page 376)
 (ii) FALSE
 (iii) FALSE
-(iv) FALSE ??? (får en PCA for hver kovariat? får ikke minimert informasjonsrommet?)
+(iv) FALSE 
 
 
 ### b)
@@ -563,15 +550,7 @@ AC_2groups = cutree(AC_hclust, 2)
 pca.GeneData <- prcomp(GeneData,scale = TRUE) 
 
 #i)
-biplot(pca.GeneData,scale=0, cex=0.5)
-
-GeneData.loading <- pca.GeneData$rotation[,1:2]
-informative_loadings <- rbind(
-  head(GeneData.loading[order(GeneData.loading[,1],decreasing = TRUE),]),
-  head(GeneData.loading[order(GeneData.loading[,2],decreasing = TRUE),])
-)
-
-biplot(x=pca.GeneData$x[,1:2],y=informative_loadings,scale=0,cex=0.5)
+autoplot(pca.GeneData, data = GeneData)
 ```
 
 ##### (ii)
