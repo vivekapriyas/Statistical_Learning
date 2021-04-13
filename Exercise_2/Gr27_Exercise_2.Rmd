@@ -218,19 +218,41 @@ Best subset selection vs lasso regression then...
 (iv) FALSE
 
 ### b)
+The basis functions for a cubic spline with knots at the quartiles $q_1$, $q_2$ of a variable $X$ are given as
+
+$$
+\begin{align}
+  b_1(X) = & X && b_4(X) =(X-q_1)^3_+   \\
+  b_2(X) = & X^2 && b_5(X) =(X-q_2)^3_+\\
+  b_3(X) = &  X^3 
+\end{align}
+$$
+where $b_4$,$b_5$ are truncated power basis functions. These are defined
+
+$$
+(X-q_i)=
+\left\{
+  \begin{array}{cc}
+    (X-q_i) & \text{if} X > q_i \\
+    0 & \text{otherwise}
+  \end{array}
+\right
+$$
 
 
 ### c)
-```{r,fig.height=6,fig.width=12}
+```{r,fig.height=5,fig.width=10}
 
-pr.train <- catdat.train[c("birds", "daily.outdoortime")]
+pr.train <- catdat.train[c("daily.outdoortime","birds")]
 deg = 1:10
 
-plot(pr.train, col ='darkgrey', main='Polynomial regression')
+plot(pr.train, col ='darkgrey', main='Polynomial regression',xlab = 'Daily outdoortime',ylab='# of birds killed troughout a year')
 co = rainbow(length(deg))
 
 
 MSE.pr <- rep('numeric',lenght=length(deg))
+
+
 for (d in deg) {
   mod <- lm(birds ~ poly(daily.outdoortime,d),pr.train)
   
@@ -240,11 +262,19 @@ for (d in deg) {
   MSE.pr[d] <- mean((pred-pr.train$birds)^2)
   
 }
-legend("topright",legend = paste("d=",deg),lty=1,col=co)
-
-plot(deg,MSE.pr,type="o",xlab="degree",ylab="MSE",main="Training MSE")
+legend("topleft",legend = paste("d =",deg),lty=1,col=co)
 ```
-
+```{r,fig.height=5,fig.width=10}
+plot(deg,MSE.pr,type="o",xlab="Degree",ylab="Training MSE",main="Training MSE vs Degree of polynomial regression")
+```
+```{r, echo =FALSE,eval=TRUE}
+MSE.df <- data.frame(deg,MSE.pr)
+colnames(MSE.df) = c('Degree','Training MSE')
+kable(MSE.df,digits=5,align='c')
+```
+Both the plot and the table of the training error show a decrease for an increasing number of degrees. There is an especially sharp decrease in the training MSE from $d=1$ to $d=2$.
+From the figure showing the polynomial regression for different degrees $d =1,2,...,10$, we see that the models with  $d>1$ prove a markedly better fit for the training data points in the region $\text{Daily outdoortime} > 300$. This fits well with the training MSE being decidedly lower for those polynomial fits.
+From the figure we also can see that the polynomial fits of higher degrees seem to fit the individual data points very well, which might indicate some overfitting for those models. This is especially obvious for $d=10$. However, since we are considering the training MSE, overfitting will lead to a decrease, so these models do have a lower training MSE than those with a lower degreee.
 
 ### Problem 3
 
@@ -547,7 +577,10 @@ For all the six combinations of linkages and distance measures, the tissues were
 pca.GeneData <- prcomp(GeneData,scale = TRUE) 
 
 #i)
-autoplot(pca.GeneData, data = GeneData)
+HvD <- c(rep(1,20),rep(2,20))
+
+autoplot(pca.GeneData, data = GeneData,col=c("red","blue")[HvD],label=TRUE)
+
 ```
 
 ##### (ii)
@@ -557,3 +590,17 @@ pve <- pca.var/sum(pca.var)
 explained_var <- sum(pve[1:5])
 ```
 The first 5 PCs explain `r round(explained_var*100,2)`% of the variance. 
+
+### f)
+From the plot of the two first principal components, we see that the groups differ a lot along the first principal component.To find the genes that vary the most across the two groups we can therefore look at the genes that contribute the most to the first principal component.
+
+```{r, echo =FALSE,eval=TRUE}
+PC1.loadings <- pca.GeneData$rotation[,1]
+high_var <- sort(abs(PC1.loadings),decreasing = TRUE)
+```
+
+The five genes that have the highest variance across the two groups are thus 
+
+```{r, echo =FALSE,eval=TRUE}
+print(high_var[1:5])
+```
