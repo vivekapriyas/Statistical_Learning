@@ -331,10 +331,9 @@ text(prune.diabetes, pretty = 0)
 
 yhat.prune = predict(prune.diabetes, newdata = d.test, type = "class")
 
-misclass.prune = table(yhat.prune, response.test)
+misclass.prune = table(Prediction = yhat.prune, Truth = response.test)
 misclass.prune
 1 - sum(diag(misclass.prune))/sum(misclass.prune)
-
 ```
 The misclassification error on the test set for the pruned tree is r`1 - sum(diag(misclass.prune))/sum(misclass.prune)`. 
 (usikker på om det er noe mer som burde skrives her...)
@@ -346,7 +345,7 @@ yhat.rf = predict(rf.diabetes, newdata = d.test)
 misclass.rf = table(yhat.rf, response.test)
 misclass.rf
 1 - sum(diag(misclass.rf))/sum(misclass.rf)
-varImpPlot(rf.diabetes, type = 2,  main = "Varians importance")
+varImpPlot(rf.diabetes, type = 2,  main = "Variance importance")
 ```
 We use random forest to construct a classification tree. When making a classification tree $m$ is chosen to be equal to $\sqrt{p}$, which in our case is $\sqrt{7} \approx 2.646 \approx 3$. Hence, we choose $m=3$. The number of trees $ntree = 500$ is not a tunig parameter and is chosen large enough. The misclassification error on the test set is r`1 - sum(diag(misclass.rf))/sum(misclass.rf)`. 
 
@@ -388,56 +387,58 @@ The paper suggests using ensemble learning with SVMs to do feature selection on 
 ##### (iii)
 
 ```{r}
-svm.leukemia.linear <- svm(Category~., data = d.leukemia.train, kernel = "linear", cost = 1, scale = FALSE)
+svm.leukemia.linear <- svm(Category~., data = d.leukemia.train, kernel = "linear", cost = 1, scale = TRUE)
 
-
+#training error
 y.leukemia.train <- predict(svm.leukemia.linear, newdata = d.leukemia.train)
-table.leukemia.train <- table(y.leukemia.train, d.leukemia.train$Category)
+table.leukemia.train <- table(Predicted_train = y.leukemia.train, Truth_train = d.leukemia.train$Category)
 table.leukemia.train
-1 - sum(diag(table.leukemia.train))/sum(table.leukemia.train)
 
+#test error
 y.leukemia.test <- predict(svm.leukemia.linear, newdata = d.leukemia.test)
-table.leukemia.test <- table(y.leukemia.test, d.leukemia.test$Category)
+table.leukemia.test <- table(Predicted_test = y.leukemia.test, Truth_test = d.leukemia.test$Category)
 table.leukemia.test
-1 - sum(diag(table.leukemia.test))/sum(table.leukemia.test)
 ```
-Training error rate: 0, test error rate: $\frac{3+3}{6+3+3+3} = \frac{6}{15} = 0.4$.
-Not surprised over the training error rate since the numer of covariates are much bigger then the number of observations. 
-Most common type of error ... 
+The training misclassification error rate for the support vector classifier with linear kernel using $C=1$ is ``r 1 - sum(diag(table.leukemia.train))/sum(table.leukemia.train)`` and the test misclassification error is ``r 1 - sum(diag(table.leukemia.test))/sum(table.leukemia.test)``. It is not surprising that the training error rate is equal to zero, since the number of covariates are much bigger then the number of observations. Meaning that we are guaranteed to find a separating hyperplane. This can result in overfitting. (usikker på om vi skal ha med den siste setningen...)
+
+From the confusion for the test set, we can see that the most errors are due to classifying children that have been successfully treated against leukeima and later relapse as non-relapse, i.e. the most common type of error is Type-?-error. It is more important to classify all of the children who are going to relapse correctly, than the children who are not going to relapse. Hence, we do not think this classification method is successful.  
 
 ##### (iv)
 
 ```{r}
-svm.leukemia.radial1 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-2), scale = FALSE)
+#C = 1, gamma = 10^-2
+svm.leukemia.radial1 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-2), scale = TRUE)
 
-
+#training error
 y.leukemia.train1 <- predict(svm.leukemia.radial1, newdata = d.leukemia.train)
-table.leukemia.train1 <- table(y.leukemia.train1, d.leukemia.train$Category)
+table.leukemia.train1 <- table(Predicted_train = y.leukemia.train1, Truth_train = d.leukemia.train$Category)
 table.leukemia.train1
-1 - sum(diag(table.leukemia.train1))/sum(table.leukemia.train1)
 
+#test error
 y.leukemia.test1 <- predict(svm.leukemia.radial1, newdata = d.leukemia.test)
-table.leukemia.test1 <- table(y.leukemia.test1, d.leukemia.test$Category)
+table.leukemia.test1 <- table(Predicted_test = y.leukemia.test1, Truth_test = d.leukemia.test$Category)
 table.leukemia.test1
-1 - sum(diag(table.leukemia.test1))/sum(table.leukemia.test1)
-
-
-
-svm.leukemia.radial2 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-5), scale = FALSE)
-
-y.leukemia.train2 <- predict(svm.leukemia.radial2, newdata = d.leukemia.train)
-table.leukemia.train2 <- table(y.leukemia.train2, d.leukemia.train$Category)
-table.leukemia.train2
-1 - sum(diag(table.leukemia.train2))/sum(table.leukemia.train2)
-
-y.leukemia.test2 <- predict(svm.leukemia.radial2, newdata = d.leukemia.test)
-table.leukemia.test2 <- table(y.leukemia.test2, d.leukemia.test$Category)
-table.leukemia.test2
-1 - sum(diag(table.leukemia.test2))/sum(table.leukemia.test2)
-
-
 
 ```
+The training misclassification error rate for the support vector classifier with radial kernel using $C=1$ and $\gamma = 10^{-2}$ is ``r 1 - sum(diag(table.leukemia.train1))/sum(table.leukemia.train1)`` and the test misclassification error rate is r`1 - sum(diag(table.leukemia.test1))/sum(table.leukemia.test1)`. 
+
+```{r}
+#C = 1, gamma = 10^-5
+svm.leukemia.radial2 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-5), scale = TRUE)
+
+#training error
+y.leukemia.train2 <- predict(svm.leukemia.radial2, newdata = d.leukemia.train)
+table.leukemia.train2 <- table(Predicted_train = y.leukemia.train2, Truth_train = d.leukemia.train$Category)
+table.leukemia.train2
+
+#test error
+y.leukemia.test2 <- predict(svm.leukemia.radial2, newdata = d.leukemia.test)
+table.leukemia.test2 <- table(Predicted_test = y.leukemia.test2, Truth_test = d.leukemia.test$Category)
+table.leukemia.test2
+```
+For the support vector classifier with radial kernal using $C = 1$ and $\gamma = 10^{-5}$, the training misclassification error rate is ``r 1 - sum(diag(table.leukemia.train2))/sum(table.leukemia.train2)`` and the test misclassification error rate is ``r 1 - sum(diag(table.leukemia.test2))/sum(table.leukemia.test2)``.
+
+Both of the support vector classifiers with radial kernel, classify all the children in the test set as non-relapse. Since training misclassification error rate for the support vector classifier using $\gamma = 10^{-2}$ is $0$, is this classifier most likely overfitted. On the other hand, the support vector classifier using $\gamma = 10^{-5}$ classify all the children in the training set as non-relapse as well. This corresponds well with the fact that a smaller $\gamma$ leads to the decision boundaries to be smoother, i.e. with a smaller $\gamma$ overfitting will be less likely. In our case the support vecto classifier with linear kernel will be the best classifier, since the training misclassification rate is smaller and it is able to classify some of the children who relapse correctly. 
 
 ### c)
 
