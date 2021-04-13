@@ -42,17 +42,9 @@ warnings()
 
 ### a) Multiple choice 1
 (i) TRUE
-
-Påstand: Regualarizaton will reduce test error, but not training error:
--  By constraining or shrinking the estimated coefficients, we can often substantially reduce the variance at the cost of a negligible increase in bias. This can lead to substantial improvements in the accuracy with which we can predict the response for observations not used in model training.
-- It may not be immediately obvious why such a constraint should improve the fit, but it turns out that shrinking the coefficient estimates can significantly reduce their variance.
-
 (ii) TRUE
 (iii) TRUE
-
-(iv) FALSE Påstand: PCR can be used for variable selection
--  However, as a result of the way PCR is implemented, the final model is more difficult to interpret because it does not perform any kind of variable selection or even directly produce coefficient estimates. (page 257)
-- We note that even though PCR provides a simple way to perform regression using M<p predictors, it is not a feature selection method. This is because each of the M principal components used in the regression is a linear combination of all p of the original features.
+(iv) FALSE
 
 
 ```{r, echo=FALSE, eval=TRUE}
@@ -96,17 +88,15 @@ points(BSS_best_cp, BSS_summary$cp[BSS_best_cp], col = "red", cex = 2, pch = 20)
 The first plot shows that the RSS increases for increasing number of predictors, which is expected since RSS does not punish the model for having many predictors. When wanting to minimize the Bayesian Information Criterion (BIC), one sees that the subset containing six predictors turns out as the best subset. For the adjusted R-squared and $C_p$, one can see that there are no specific subset that stands out to be the best, and it looks like all subsets containing between 5 and 17 predictors results in approximately the same model performance. However, all the plots indicates that the reduced model should include at least the five predictors ``r names(coef(BSS, 5))``. Kept in mind that we want our model to be as simple as possible, we have chosen BIC as model choice criterion. 
 
 
-The above plot illustrates the best subsets ranked based on BIC, where the best subset in at the top.
-
 ``` {r, echo=FALSE, eval=TRUE}
 #plot illustrating which parameters that is used in the prefered model
 plot(BSS, scale = "bic")
 coef(BSS, BSS_best_bic)
 ```
-The above plot illustrates the best subsets ranked based on BIC, where the best subset in at the top. Thus, the selected variables is  ``wetfood``, ``daily.playtime``, ``children.13``, ``urban``, ``bell`` and ``daily.outdoortime``.
+The above plot illustrates the best subsets ranked based on BIC, where the subset that minimize the BIC is at the top. Thus, the selected variables for the satisfactory model is  ``wetfood``, ``daily.playtime``, ``children.13``, ``urban``, ``bell`` and ``daily.outdoortime``.
 
 
-To determine the mean square error we use this reduced linear regression model to predict the number of birds eaten by cats. 
+Furthermore, we want to determine the mean square error of the reduced linear regression model based on the selected variables above. 
 ``` {r, echo=TRUE, eval=TRUE}
 #linear regression using model criterion BIC
 kept_predictors <- names(coef(BSS, id = BSS_best_bic))
@@ -164,44 +154,39 @@ MSE_lasso
 ```
 For this method, $\lambda$ is chosen using cross-validation, where the $\lambda$ that minimizes the cross-validated error is selected and was found to be $\lambda = $ ``r bestlam.Lasso ``. 
 
-MÅ SI NOE MER OM DENNE KROSSVALIDERINGA. 
+Si noe mer om denne krossvalideringa. (Oppgava: Explain how you chosse lambda.)
 
 
-A beneficial property of the lasso regression is that predictors can be shrinked to all the way to zero, meaning that parameters that is not good to estimate for the response can be completely erased from the model. In our case, lasso regression uses the predictors ``r names(lasso.coef[lasso.coef!=0])`` and get rid of the predictors ``r names(lasso.coef[lasso.coef == 0])``.
+A beneficial property of the lasso regression is that predictors can be shrinked all the way to zero, meaning that parameters that is not good(annet ord?) for estimating the response can be completely erased from the model. In our case, the non-zero coefficients using lasso regression are ``r names(lasso.coef[lasso.coef!=0])`` and the omitted once are ``r names(lasso.coef[lasso.coef == 0])``.
 
-The test mean square error for the lasso regression model is ``r MSE_lasso``. 
+The test mean square error for the lasso regression model was found to be ``r MSE_lasso``. 
 
 
 
 ### d) 
 
-For increased values of $\lambda$ the slopes gets smaller and smaller until they reach zero as $\lambda \to \infty$. This means that one is left with a model containing only the intercept. On the other hand, when $\lambda =0$ the lasso regression line will be the same as for the least squared regression line, i.e. the full multiple linear regression, since the term that provides for penalization vanishes. 
+For increased values of $\lambda$ the slopes gets smaller and smaller until they reach zero as $\lambda \to \infty$. This means that one is left with a model containing only the intercept. On the other hand, when $\lambda =0$ the lasso regression line will be the same as for the least squared regression line, i.e. the full multiple linear regression model, since the term that provides for penalization vanishes. 
 
 ### e)
-We will now show that the test MSE of the best subset selection model and the lasso regression model indeed are better  than the test MSE for the model with only intercept and the full model. We find these test MSE's the following way
+We will now show that the test MSE of the best subset selection model and the lasso regression model indeed are better than the test MSE for the model with only intercept and the full model. We find these test MSE's the following way
 ```{r, echo=TRUE, eval=TRUE }
 #determine MSE for a model containing only the intercept
 ILR <- lm(birds~1, data = catdat.train)
-
 ILR_squared_errors <- (catdat.test$birds - summary(ILR)$coefficients[1])^2
-
 MSE_ILR <- mean(ILR_squared_errors)
 
 
 #determine MSE for a multiple linear regression
 MLR <- lm(birds~., data = catdat.train)
-
 MLR_predictions <- predict(MLR, newdata = catdat.test)
 MLR_squared_errors <- (catdat.test$birds - MLR_predictions)^2
-
 MSE_MLR <- mean(MLR_squared_errors)
 ```
 The test mean square errors for respectively the model containing only intercept and the multiple linear regression model were found to be ``r MSE_ILR`` and ``r MSE_MLR``. Both of these values are greater than the once obtained for best subset selection with BIC as model criteria and lasso regression. Hence, the models from b) and c) results in better predictions than both the full model and the model with no predictors. 
 
-Kanskje dra en sammenheng til at penalty ved lasso regression er hensiktsmessig. 
-
 
 ### f)
+From the previous tasks we found the MSE for the four cases to be
 ```{r, echo=FALSE, eval = TRUE}
 mse_values <- matrix(c(MSE_BSS, MSE_lasso, MSE_MLR, MSE_ILR), ncol = 1, byrow = TRUE)
 colnames(mse_values) <- c("the test MSE")
@@ -210,11 +195,19 @@ mse_values <- as.table(mse_values)
 mse_values
 ```
 
-From this tabulate, one sees that mean square errors for 
+From this tabulate, one sees that mean square errors the intercept linear regression stands out to be the absolute worst model to predict how many birds a cat will kill during a year. This is due to.... 
+- the model containing only intercept uses the mean of the 452 observations of numbers of birds kill by cats during a year as the predicted value. 
+- since the MSE is $\frac1N \sum_{i=1}^N (y_i - \hat{y_i})^2 ... 
 
-- It turns out that the model with only intercept performs a much worse than the others. This is due to that.. 
+Further, all the other MSE's results in a mean square error on about $300$. 
 
+DOES IT FIT WITH WHAT YOU HAVE EXPECTED:
+This indeed fits with what was expected (??) 
+From d), we have that lasso regression with $\lambda = 0$ equals the full model and with $\lambda \to \infty$ equals the model containing only intercept. Based on the MSE values, it is appropriate to use lasso regression on this dataset to use to get rid of coefficients that may be considered as noise when estimating the response. 
 
+Recall that lasso regression is lurt å bruke når the ikke er for mange prediktorer (i forhold til ridge som funker best med når det er mange...) 
+
+Best subset selection vs lasso regression then... 
 
 ### Problem 2
 
@@ -496,51 +489,49 @@ GeneData = t(GeneData)
 GeneData <- scale(GeneData)
 ```
 
-
-
-```{r}
+The following code shows how hierarchical clustering with complete, single and average linkage was implemented both using Euclidean distance and correlation-based distance. 
+```{r, echo=TRUE, eval=TRUE}
 #hierarchical clustering Euclidean distance
-par(mfrow=c(2,3))
 CE_hclust = hclust(dist(GeneData), method = "complete")
-plot(CE_hclust, main = "Complete Linkage, Euclidean", xlab = "", sub = "", cex=.9)
-
 SE_hclust = hclust(dist(GeneData), method = "single")
-plot(SE_hclust, main = "Single Linkage, Euclidean", xlab = "", sub = "", cex=.9)
-
 AE_hclust = hclust(dist(GeneData), method = "average")
-plot(AE_hclust, main = "Average Linkage, Euclidean", xlab = "", sub = "", cex=.9, xlim = c(40,50))
-
 
 #hierarchical clustering using correlation-based distance
 correlation_dist = as.dist(1-cor(t(GeneData)))
 CC_hclust = hclust(correlation_dist, method = "complete")
-plot(CC_hclust, main = "Complete Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
-
 SC_hclust = hclust(correlation_dist, method = "single")
-plot(SC_hclust, main = "Single Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
-
 AC_hclust = hclust(correlation_dist, method = "average")
+```
+
+The following plot shows dendrograms for the investigated choices for linkage and distance. 
+```{r,echo=FALSE,eval=TRUE}
+#plot of the dendrograms
+par(mfrow=c(2,3))
+plot(CE_hclust, main = "Complete Linkage, Euclidean", xlab = "", sub = "", cex=.9)
+plot(SE_hclust, main = "Single Linkage, Euclidean", xlab = "", sub = "", cex=.9)
+plot(AE_hclust, main = "Average Linkage, Euclidean", xlab = "", sub = "", cex=.9, xlim = c(40,50))
+
+plot(CC_hclust, main = "Complete Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
+plot(SC_hclust, main = "Single Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
 plot(AC_hclust, main = "Average Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
 ```
 
 
+
 #### d) 
+Based on the dendrograms from c), the tissues were clustered into two groups the following way.  
 ```{r}
 #cut the clusters in two groups
 CE_2groups =  cutree(CE_hclust, 2)
-
 SE_2groups =  cutree(SE_hclust, 2)
-
 AE_2groups =  cutree(AE_hclust, 2)
-
 CC_2groups = cutree(CC_hclust, 2)
-
 SC_2groups = cutree(SC_hclust, 2)
-
 AC_2groups = cutree(AC_hclust, 2)
-
 ```
+For all the six combinations of linkages and distance measures, the tissues were clustered into groups that coincide with whether the tissues came from a healthy patient group or the tissues came from a diseased patient group (muligens litt rar setning). Hence, all the hierarchical clustering methods performed equally good and there is no hierarchical clustering method that stands out as the best. 
 
+%legge inn kode som presenterer the two clusters in each case in a fifi way. 
 
 
 
