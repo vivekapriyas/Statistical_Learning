@@ -255,11 +255,12 @@ plot(deg,MSE.pr,type="o",xlab="degree",ylab="MSE",main="Training MSE")
 (iv) FALSE
 
 ### b)
-The three will have a split at age < 81.5 and a spilt at country: Indonesia, japan, korea. (Her er jeg litt usikker på hvordan man skal forklare treet). This is the pruned three since the length of the branches says something about how much the RSS decrease when one goes alongside that branch. When we make a regression three we want the RSS to be as small as possible. Hence, we want to keep the branches which are the longest. (Veldig dårlig forklarning, men er sånn ish dette vi vil si tror jeg.)
+The length of the branches in the tree correspondes to how much the RSS decreases along that branch, i.e. the longer the branch the more reduced RSS get. When we make a regression tree we want the RSS to be as small as possible. Hence, we want to keep the branches which are the longest and the pruned tree with three leaves will have a split at r`age < 81.5` and a spilt at r`country: indonesia, japan, Korea`.
+
 
 ### c) 
 
-```{r}
+```{r, echo=FALSE, eval = TRUE}
 id <- "1Fv6xwKLSZHldRAC1MrcK2mzdOYnbgv0E" # google file ID
 d.diabetes <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
 d.train=d.diabetes$ctrain
@@ -271,8 +272,8 @@ d.test$diabetes = factor(d.test$diabetes, levels=c('0','1'),labels=c('0','1'))
 response.test = d.test$diabetes
 ```
 
-(i)
-```{r}
+###### (i)
+```{r, echo=FALSE, eval = TRUE}
 tree.diabetes = tree(diabetes ~., data = d.train)
 
 plot(tree.diabetes)
@@ -281,19 +282,20 @@ text(tree.diabetes, pretty = 0)
 yhat.tree = predict(tree.diabetes, newdata = d.test, type = "class")
 misclass.tree = table(yhat.tree, response.test)
 misclass.tree
+```
+The misclassification error on the test set for the simple classification tree is r`1 - sum(diag(misclass.tree))/sum(misclass.tree)`.  (Vet ikke om vi vil ha med dette, da jeg spurte om det sa hun at det var den andre feilen som ble spurt om i oppgaven, men at man sikkert kunne ha med begge...)
 
-1 - sum(diag(misclass.tree))/sum(misclass.tree)
-
+```{r, echo=FALSE, eval = TRUE}
 set.seed(1)
 cv.diabetes = cv.tree(tree.diabetes, K = 10)
 tree.min = which.min(cv.diabetes$dev)
 best = cv.diabetes$size[tree.min]
 best
-plot(cv.diabetes$size, cv.diabetes$dev, type = "b")
+plot(cv.diabetes$size, cv.diabetes$dev, xlab = "Terminal nodes", type = "b")
 points(best, cv.diabetes$dev[tree.min], col = "red", pch = 20)
 
 
-prune.diabetes = prune.misclass(tree.diabetes, best = best)
+prune.diabetes = prune.tree(tree.diabetes, best = best)
 plot(prune.diabetes)
 text(prune.diabetes, pretty = 0)
 
@@ -301,22 +303,26 @@ yhat.prune = predict(prune.diabetes, newdata = d.test, type = "class")
 
 misclass.prune = table(yhat.prune, response.test)
 misclass.prune
-
 1 - sum(diag(misclass.prune))/sum(misclass.prune)
 
 ```
+The misclassification error on the test set for the pruned tree is r`1 - sum(diag(misclass.prune))/sum(misclass.prune)`. 
+(usikker på om det er noe mer som burde skrives her...)
 
-```{r}
+##### (ii)
+```{r, echo=FALSE, eval=TRUE}
 rf.diabetes = randomForest(diabetes~., data = d.train, mtry = 3, ntree = 500, importance = TRUE)
 yhat.rf = predict(rf.diabetes, newdata = d.test)
 misclass.rf = table(yhat.rf, response.test)
 misclass.rf
 1 - sum(diag(misclass.rf))/sum(misclass.rf)
-importance(rf.diabetes)
-varImpPlot(rf.diabetes)
+varImpPlot(rf.diabetes, type = 2,  main = "Varians importance")
 ```
+We use random forest to construct a classification tree. When making a classification tree $m$ is chosen to be equal to $\sqrt{p}$, which in our case is $\sqrt{7} \approx 2.646 \approx 3$. Hence, we choose $m=3$. The number of trees $ntree = 500$ is not a tunig parameter and is chosen large enough. The misclassification error on the test set is r`1 - sum(diag(misclass.rf))/sum(misclass.rf)`. 
 
-Since glu and bmi has the highest MeanDecreaseAccuracy and MeanDecreaseGini are they the most influential predictors of diabetes. This corresponds well to the three we made in 3c) (i) where the two first splits are based on glu and bmi. 
+From the varians importance plot above, we can see that r`glu` and r`bmi` has the highest MeanDecreaseGini. Hence, they are the most influential predictors of diabetes. This corresponds well to the three we made in 3c) (i) where the two first splits are based on glu and bmi. 
+
+(usikker på type = 2, MeanDecreaseAccuracy)
 
 
 # Problem 4
