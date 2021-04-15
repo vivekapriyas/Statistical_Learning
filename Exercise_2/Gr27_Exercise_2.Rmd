@@ -38,7 +38,7 @@ options(tinytex.verbose = TRUE)
 warnings()
 ```
 
-### Problem 1
+# Problem 1
 
 ### a) Multiple choice 1
 (i) TRUE
@@ -60,8 +60,8 @@ catdat.test = catdat[-train.ind, ]
 
 
 ### b) Best subset selection
-For this task, we will perform best subset selection to obtain a reduced linear regression model based on the ``catdat`` dataset. Below, we have used the function ``regsubsets()``to implement the best subset selection method.
-```{r 1b1, echo=TRUE, eval=TRUE}
+For this task, we will perform best subset selection to obtain a reduced linear regression model based on the ``catdat`` dataset.
+```{r 1b1, echo=FALSE, eval=TRUE}
 numPred = 17
 BSS = regsubsets(birds~., data = catdat.train, nvmax = numPred)
 BSS_summary = summary(BSS)
@@ -69,9 +69,9 @@ BSS_summary = summary(BSS)
 
 By observing the graphs below, that are illustrating the optimal numbers of predictors for different criterions, we want to determine which model choice criterion to use. 
 
-```{r 1b2, echo=FALSE, eval=TRUE, fig.width=7, fig.height=5}
+```{r 1b2, echo=FALSE, eval=TRUE, fig.width=7, fig.height=3}
 #plot illustrating different model choice criterions
-par(mfrow=c(2,2))
+par(mfrow=c(1,2))
 plot(BSS_summary$rss, xlab = "Numbers of variables", ylab = "RSS", type ="l") 
 
 plot(BSS_summary$bic, xlab = "Numbers of variables", ylab = "BIC", type ="l")
@@ -82,22 +82,23 @@ plot(BSS_summary$adjr2, xlab = "Numbers of variables", ylab = "R_{adj}^2", type 
 BSS_best_adjr2 = which.max(BSS_summary$adjr2)
 points(BSS_best_adjr2, BSS_summary$adjr2[BSS_best_adjr2], col = "red", cex = 2, pch = 20)
 
+
 plot(BSS_summary$cp,xlab = "Numbers of variables", ylab = "Cp", type ="l")
 BSS_best_cp = which.min(BSS_summary$cp)
 points(BSS_best_cp, BSS_summary$cp[BSS_best_cp], col = "red", cex = 2, pch = 20)
 names_five_predictors = names(coef(BSS, 5))[-1]
-#par(resetPar())
 ```
 
 The first plot shows that the RSS decreases for increasing number of predictors, which is expected since RSS always will increase when adding more predictors to the model. When wanting to minimize the Bayesian Information Criterion (BIC), one sees that the subset containing six predictors turns out as the best subset. For the adjusted R-squared and $C_p$, one can see that there is no specific subset that stands out to be the best, and it looks like all subsets containing between 5 and 17 predictors results in approximately the same model performance. However, all the plots indicates that the reduced model should include at least the five predictors ``r names_five_predictors[-5]`` and ``r names_five_predictors[5]``. Kept in mind that we want our model to be as simple as possible, we have chosen BIC as model choice criterion. 
 
-``` {r 1b3, echo=FALSE, eval=TRUE, fig.height = 5, fig.width = 6, fig.align = "center"}
+The below plot illustrates the best subsets ranked based on BIC, where the subset that minimize the BIC is at the top. Thus, the selected variables for the satisfactory model are  ``wetfood``, ``daily.playtime``, ``children.13``, ``urban``, ``bell`` and ``daily.outdoortime``.
+
+``` {r 1b3, echo=FALSE, eval=TRUE, fig.height = 4, fig.width = 6, fig.align = "center"}
 #plot illustrating which parameters that is used in the prefered model
 par(mfrow=c(1,1))
 plot(BSS, scale = "bic")
-coef(BSS, BSS_best_bic)
 ```
-The above plot illustrates the best subsets ranked based on BIC, where the subset that minimize the BIC is at the top. Thus, the selected variables for the satisfactory model are  ``wetfood``, ``daily.playtime``, ``children.13``, ``urban``, ``bell`` and ``daily.outdoortime``.
+
 
 
 Furthermore, we want to determine the mean square error of the reduced linear regression model based on the selected variables above. 
@@ -125,46 +126,46 @@ The test mean square error for the reduced model using best subset selection wit
 
 ### c) Lasso Regression
 Now, we are going to obtain a lasso regression model of the dataset ``catdat``.  
-```{r 1c, echo=TRUE, eval=TRUE, fig.height=4, fig.width=5, fig.align="center"}
+```{r 1c1, echo=FALSE, eval=TRUE}
 #make matrices of the training and testing data
 x.train <- model.matrix(birds~., data = catdat.train)[, -1]
 y.train <- catdat.train$birds
 x.test <- model.matrix(birds~., data = catdat.test)[,-1]
 y.test <- catdat.test$birds
-
-#fits a genelarized linar model with lasso penalty.
+```
+```{r 1c2, echo=TRUE, eval=TRUE, fig.height=4, fig.width=5, fig.align="center"}
+#fits a generalized linear model with lasso penalty.
 lasso_mod <- glmnet(x.train, y.train, alpha = 1)
 
 #k-fold cross validation to choose lambda
 set.seed(1)
 cv.out = cv.glmnet(x.train, y.train, alpha = 1)
-plot(cv.out)
-
 bestlam.Lasso<- cv.out$lambda.min
 
 lasso_predictions = predict(lasso_mod, s = bestlam.Lasso, newx= x.test)
 lasso_square_errors <- as.numeric((lasso_predictions - y.test)^2)
 squared_errors_lasso<- data.frame(lasso_square_errors = lasso_square_errors, squared_errors)
 
+#the test MSE
+MSE_lasso <- mean(lasso_square_errors)
+```
+```{r 1c3, echo=FALSE, eval=TRUE}
 #determine the coefficients used in the lasso regression
 lasso.coef = predict(lasso_mod, type = "coefficients", s = bestlam.Lasso)[1:18,]
 all_coefs = lasso.coef
 nonzero_coefs = all_coefs[all_coefs!=0]
-
-#the test MSE
-MSE_lasso <- mean(lasso_square_errors)
 ```
 For this method, $\lambda$ is chosen using cross-validation, where the $\lambda$ that minimizes the mean squared error is selected and was found to be $\lambda =$ ``r bestlam.Lasso ``. 
-A beneficial property of the lasso regression is that predictors can be shrunken all the way to zero, meaning that parameters that is not significant for estimating the response can be completely erased from the model. In our case, the non-zero coefficients using lasso regression are ``r names(lasso.coef[lasso.coef!=0])[c(-9,-10,-11,-12,-13,-14)]`` ``r names(lasso.coef[lasso.coef!=0])[c(9,10,11,12,13,14)]``and the omitted once are ``r names(lasso.coef[lasso.coef == 0])``.
+A beneficial property of the lasso regression is that predictors can be shrunken all the way to zero, meaning that parameters that is not significant for estimating the response can be completely erased from the model. In our case, the non-zero coefficients using lasso regression are ``r names(lasso.coef[lasso.coef!=0])[c(-1,-9,-10,-11,-12,-13,-14)]`` ``r names(lasso.coef[lasso.coef!=0])[c(9,10,11,12,13,14)]`` and the omitted once are ``r names(lasso.coef[lasso.coef == 0])``.
 
-The test mean square error for the lasso regression model was found to be ``r MSE_lasso``. 
+The test mean square error for the lasso regression model was found to be ``r round(MSE_lasso,2)``. 
 
 
-### d) 
+### d) The shrinking parameter $\lambda$
 
 For increased values of $\lambda$ the slopes gets smaller and smaller until they reach zero as $\lambda \to \infty$. This means that one is left with a model containing only the intercept. On the other hand, when $\lambda =0$ the lasso regression line will be the same as for the least squared regression line, i.e. the full multiple linear regression model, since the term that provides for penalization vanishes. 
 
-### e)
+### e) Intercept and full model 
 We will now show that the test MSE of the best subset selection model and the lasso regression model indeed are better than the test MSE for the model with only intercept and the full model. We find these test MSE's the following way
 ```{r 1e, echo=TRUE, eval=TRUE }
 #determine MSE for a model containing only the intercept
@@ -172,17 +173,16 @@ ILR <- lm(birds~1, data = catdat.train)
 ILR_squared_errors <- (catdat.test$birds - summary(ILR)$coefficients[1])^2
 MSE_ILR <- mean(ILR_squared_errors)
 
-
 #determine MSE for a multiple linear regression
 MLR <- lm(birds~., data = catdat.train)
 MLR_predictions <- predict(MLR, newdata = catdat.test)
 MLR_squared_errors <- (catdat.test$birds - MLR_predictions)^2
 MSE_MLR <- mean(MLR_squared_errors)
 ```
-The test mean square errors for respectively the model containing only intercept and the multiple linear regression model were found to be ``r MSE_ILR`` and ``r MSE_MLR``. Both of these values are greater than the once obtained for best subset selection with BIC as model criteria and lasso regression. Hence, the models from b) and c) results in better predictions than both the full model and the model with no predictors. 
+The test mean square errors for respectively the model containing only intercept and the multiple linear regression model were found to be ``r round(MSE_ILR,2)`` and ``r round(MSE_MLR,2)``. Both of these values are greater than the ones obtained for best subset selection with BIC as model criteria and lasso regression. Hence, the models from b) and c) results in better predictions than both the full model and the model with no predictors. 
 
 
-### f)
+### f) Comparing MSE for the models
 From the previous tasks we found the MSE for the four cases to be
 ```{r 1f, echo=FALSE, eval = TRUE}
 mse_values <- matrix(c(MSE_BSS, MSE_lasso, MSE_MLR, MSE_ILR), ncol = 1, byrow = TRUE)
@@ -192,57 +192,39 @@ mse_values <- as.table(mse_values)
 mse_values
 ```
 
-From this tabulate, one sees that mean square errors the intercept linear regression stands out to be the absolute worst model to predict how many birds a cat will kill during a year. This is due to.... 
-- the model containing only intercept uses the mean of the 452 observations of numbers of birds kill by cats during a year as the predicted value. 
-- since the MSE is $\frac1N \sum_{i=1}^N (y_i - \hat{y_i})^2$ ... 
-
-Further, all the other MSE's results in a mean square error on about $300$. 
-
-DOES IT FIT WITH WHAT YOU HAVE EXPECTED:
-This indeed fits with what was expected (??) 
-From d), we have that lasso regression with $\lambda = 0$ equals the full model and with $\lambda \to \infty$ equals the model containing only intercept. Based on the MSE values, it is appropriate to use lasso regression on this dataset to use to get rid of coefficients that may be considered as noise when estimating the response. 
-
-Recall that lasso regression is lurt å bruke når the ikke er for mange prediktorer (i forhold til ridge som funker best med når det er mange...) 
-
-Best subset selection vs lasso regression then... 
-
-Forslag:
-From this tabulate, one sees that mean square errors for the intercept linear regression stands out to be the absolute worst model to predict how many birds a cat will kill during a year. This is due to the fact that this model only contains the intercept, which is determined using the mean of the 452 observations of numbers of birds kill by cats during a year as the predicted value. We expect this model to preform poorly, since the MSE for the model only containing the intercept is $\frac1N \sum_{i=1}^N (y_i - \bar{y})^2$, where $\bar{y}$ is the mean number of birds killed by cats and the varianse in the ``catdat`` data is.... Further, all the other models have mean square errors around $300$, where the full model has the highest MSE of those three. This is also as expected, since we would think that the reduced model would preform better than the full model, but not necessary signficantly better. 
+From this tabulate, one sees that the mean square error for the intercept linear regression stands out to be the absolute worst model to predict how many birds a cat will kill during a year. This fits what we have seen in earlier tasks, for example the plots in task b. This model only contains the intercept which is determined using the mean of the 452 observations of numbers of birds killed by cats during a year as the predicted value. Therefore we would expect this model to preform poorly with a dataset with high variance and we would expect better performance from models that include some or all of the covariates. As expected the mean square errors for these other models are significantly smaller at around $300$, where the full model has the highest MSE of those three. This is also as expected, we would think that both best subset selection and lasso regression would perform somewhat better than the full model, since both methods resulted in reduces models. However, we would not necessarily expect significantly better performance. 
 
 
 
-### Problem 2
+# Problem 2
 
-### a)
+### a) Multiple choice 2
 (i) TRUE
 (ii) TRUE
 (iii) FALSE
 (iv) FALSE
 
-### b)
+### b) Basis functions for cubic splines
 The basis functions for a cubic spline with knots at the quantiles $q_1$, $q_2$ of a variable $X$ are given as
-
-
-\begin{align}
+\begin{align*}
   b_1(X) = & X && b_4(X) =(X-q_1)^3_+   \\
   b_2(X) = & X^2 && b_5(X) =(X-q_2)^3_+\\
   b_3(X) = &  X^3 
-\end{align}
-
+\end{align*}
 where $b_4$,$b_5$ are truncated power basis functions. These are defined
-
-\begin{equation}
+\begin{equation*}
 (X-q_i)=
   \begin{cases}
-    (X-q_i) & \text{if} X > q_i \\
+    (X-q_i) & \text{if } X > q_i \\
     0 & \text{otherwise}
   \end{cases}
-\end{equation}
+\end{equation*}
 
+### c) Polynomial regression model
+##### (i)
+The plot below shows polynomial regression models for different degrees $d$ fitted for the ``catdat`` data using only ``daily.outdoortime`` as a covariate.
 
-### c)
-```{r 2c1,fig.height=5,fig.width=10}
-
+```{r 2c1,fig.height=5,fig.width=9, echo=FALSE, eval=TRUE}
 pr.train <- catdat.train[c("daily.outdoortime","birds")]
 deg = 1:10
 
@@ -264,7 +246,11 @@ for (d in deg) {
 }
 legend("topleft",legend = paste("d =",deg),lty=1,col=co)
 ```
-```{r 2c2,fig.height=5,fig.width=10}
+
+##### (ii)
+The training MSE for the models in (i) are found and shown in the table below. 
+
+```{r 2c2,fig.height=5,fig.width=10, echo=FALSE, eval=FALSE}
 plot(deg,MSE.pr,type="o",xlab="Degree",ylab="Training MSE",main="Training MSE vs Degree of polynomial regression")
 ```
 ```{r 2c3, echo =FALSE,eval=TRUE}
@@ -272,22 +258,22 @@ MSE.df <- data.frame(deg,MSE.pr)
 colnames(MSE.df) = c('Degree','Training MSE')
 kable(MSE.df,digits=5,align='c')
 ```
-Both the plot and the table of the training error show a decrease for an increasing number of degrees. There is an especially sharp decrease in the training MSE from $d=1$ to $d=2$.
+The table of the training MSE show a decrease for an increasing number of degrees. There is an especially sharp decrease in the training MSE from $d=1$ to $d=2$.
 From the figure showing the polynomial regression for different degrees $d =1,2,...,10$, we see that the models with  $d>1$ prove a markedly better fit for the training data points in the region ``Daily outdoortime`` $> 300$. This fits well with the training MSE being decidedly lower for those polynomial fits.
-From the figure we also can see that the polynomial fits of higher degrees seem to fit the individual data points very well, which might indicate some overfitting for those models. This is especially obvious for $d=10$. However, since we are considering the training MSE, overfitting will lead to a decrease, so these models do have a lower training MSE than those with a lower degree.
+From the figure we also can see that the polynomial fits of higher degrees seem to fit the individual data points very well, which might indicate some overfitting for those models. This is especially obvious for $d=10$. However, since we are considering the training MSE, overfitting will lead to a decrease. Therefore, these models do have a lower training MSE than those with a lower degree, even though they might have higher test MSE. 
 
-### Problem 3
+# Problem 3
 
-### a)
+### a) Multiple choice 3
 (i) TRUE
 (ii) TRUE
 (iii) FALSE
 (iv) FALSE
 
-### b)
-The length of the branches in the tree corresponds to how much the RSS decreases along that branch, i.e. the longer the branch the more reduced RSS get. When we make a regression tree we want the RSS to be as small as possible. Hence, we want to keep the branches which are the longest. This results in that the pruned tree with three leaves will have splits at ``age < 81.5`` and ``country: indonesia, japan, Korea``. 
+### b) Pruning the tree down to three leaves
+The length of the branches in the tree corresponds to how much the RSS decreases along that branch, i.e. the longer the branch the more reduced RSS get. When we make a regression tree we want the RSS to be as small as possible. Hence, we want to keep the branches which are the longest. For the tree in a, this results in that the pruned tree with three leaves will have splits at ``age < 81.5`` and ``country: indonesia, japan, Korea``. 
 
-### c) 
+### c) Tree-based methods to predict presence of diabetes
 
 ```{r 3c1, echo=FALSE, eval = TRUE}
 id <- "1Fv6xwKLSZHldRAC1MrcK2mzdOYnbgv0E" # google file ID
@@ -301,26 +287,22 @@ d.test$diabetes = factor(d.test$diabetes, levels=c('0','1'),labels=c('0','1'))
 response.test = d.test$diabetes
 ```
 
-###### (i)
+##### (i)
 The simple classification tree yields 
 
-```{r 3c2, echo=FALSE, eval = TRUE, fig.height=6,fig.width=5, fig.align="center"}
+```{r 3c2, echo=FALSE, eval = TRUE, fig.height=5.5, fig.width=8, fig.align="center"}
 tree.diabetes = tree(diabetes ~., data = d.train)
 
 plot(tree.diabetes)
 text(tree.diabetes, pretty = 0)
 
 yhat.tree = predict(tree.diabetes, newdata = d.test, type = "class")
-misclass.tree = table(yhat.tree, response.test)
+misclass.tree = table(Prediction = yhat.tree, Truth =  response.test)
 misclass.tree
 ```
-The misclassification error on the test set for this simple classification tree is ``r round(1 - sum(diag(misclass.tree))/sum(misclass.tree),3)``. 
+The misclassification error on the test set for this simple classification tree is ``r round(1 - sum(diag(misclass.tree))/sum(misclass.tree),3)``. Furthermore, cost-complexity pruning using 10-fold cross validation was applied on the training dataset resulting in that three leaves would be optimal numbers of leaves for the pruned tree, as shown below.
 
-(Vet ikke om vi vil ha med dette, da jeg spurte om det sa hun at det var den andre feilen som ble spurt om i oppgaven, men at man sikkert kunne ha med begge...)
-
-Furthermore, cost-complexity pruning using 10-fold cross validation was applied on the training dataset resulting in that three leaves would be optimal numbers of leaves for the pruned tree, as shown below.
-
-```{r 3c3, echo=FALSE, eval = TRUE, fig.height=3, fig.width=5, fig.align="center"}
+```{r 3c3, echo=FALSE, eval = TRUE, fig.height=2.7, fig.width=5, fig.align="center"}
 set.seed(1)
 cv.diabetes = cv.tree(tree.diabetes, K = 10)
 tree.min = which.min(cv.diabetes$dev)
@@ -332,7 +314,7 @@ points(best, cv.diabetes$dev[tree.min], col = "red", pch = 20)
 
 This resulted in the following pruned tree.
 
-```{r 3c4, echo=FALSE, eval=TRUE,fig.height=3, fig.width=5, fig.align="center"}
+```{r 3c4, echo=FALSE, eval=TRUE,fig.height=2.5, fig.width=5, fig.align="center"}
 prune.diabetes = prune.tree(tree.diabetes, best = best)
 plot(prune.diabetes)
 text(prune.diabetes, pretty = 0)
@@ -342,38 +324,33 @@ yhat.prune = predict(prune.diabetes, newdata = d.test, type = "class")
 misclass.prune = table(Prediction = yhat.prune, Truth = response.test)
 misclass.prune
 ```
-The misclassification error on the test set for this pruned tree was found to be ``r round(1 - sum(diag(misclass.prune))/sum(misclass.prune),3)``. 
-(usikker på om det er noe mer som burde skrives her...)
+The misclassification error on the test set for this pruned tree was found to be ``r round(1 - sum(diag(misclass.prune))/sum(misclass.prune),3)``. Compared to the simple classification tree we see that the pruned tree have slightly lower misclassification error and classify more of the women without diabetes correctly. 
 
 ##### (ii)
 Now, the classification tree will be constructed using the random forest approach. 
 
-```{r 3c5, echo=FALSE, eval=TRUE, fig.height=4, fig.width=5, fig.align="center"}
+```{r 3c5, echo=FALSE, eval=TRUE, fig.height=3, fig.width=5, fig.align="center"}
 rf.diabetes = randomForest(diabetes~., data = d.train, mtry = 3, ntree = 500, importance = TRUE)
 yhat.rf = predict(rf.diabetes, newdata = d.test)
-misclass.rf = table(yhat.rf, response.test)
+misclass.rf = table(Prediction = yhat.rf, Truth = response.test)
 misclass.rf
-1 - sum(diag(misclass.rf))/sum(misclass.rf)
 varImpPlot(rf.diabetes, type = 2,  main = "Variance importance")
 ```
 
-When making this classification tree, the number of variables randomly sampled as candidates at each split ``mtry`` was chosen to be equal to $\sqrt{p}$, which in our case is $\sqrt{7} \approx 2.646 \approx 3$. Hence, we choose ``mtry = 3``. The number of trees ``ntree = 500`` is not a tuning parameter but is chosen large enough. The misclassification error on the test set when using random forest to train the model (??) was found to be ``r round(1 - sum(diag(misclass.rf))/sum(misclass.rf),3)``. 
+When making this classification tree, the number of variables randomly sampled as candidates at each split ``mtry`` was chosen to be equal to $\sqrt{p}$, which in our case is $\sqrt{7} \approx 2.646 \approx 3$. Hence, we choose ``mtry = 3``. The number of trees ``ntree = 500`` is not a tuning parameter but is chosen large enough. The misclassification error on the test set was found to be ``r round(1 - sum(diag(misclass.rf))/sum(misclass.rf),3)``. 
 
-From the variance importance plot above, we can see that ``glu`` and ``bmi`` has the highest ``MeanDecreaseGini``. Hence, they are the most influential predictors of diabetes. This corresponds well to the tree we made in 3c) (i) where the two first splits were based on glu and bmi. 
-
-(usikker på type = 2, MeanDecreaseAccuracy)
-
+From the variance importance plot above, we can see that ``glu`` and ``bmi`` has the highest ``MeanDecreaseGini``. Hence, they are the most influential predictors of diabetes. This corresponds well to the tree we made in 3c) (i) where the two first splits were based on ``glu`` and ``bmi``. 
 
 
 # Problem 4
 
-### a)
+### a) Multiple choice 4
 (i) TRUE
 (ii) TRUE
 (iii) FALSE
 (iv) TRUE
 
-### b)
+### b) Support vector machine 
 ```{r 4b1, echo=FALSE, eval=TRUE}
 id <- "1x_E8xnmz9CMHh_tMwIsWP94czPa1Fpsj" # google file ID
 d.leukemia <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=T)
@@ -388,7 +365,7 @@ d.leukemia.train <- d.leukemia[-t.samples,]
 
 
 ##### (i)
-A SVM is a more suitable approach than logistic regression for this dataset since we have p>>1 and therefore always can find a separating hyperplane, excepting exact feature ties.
+A SVM is a more suitable approach than logistic regression for this dataset since we have $p\gg n$ and therefore always can find a separating hyperplane, excepting exact feature ties.
 
 Another method that could be used instead of a SVM is tree-based classification, since it also allows for a higher number of dimensions than observations. It then would be beneficial to use an ensembel method like random forest to reduce the variance.
 
@@ -396,10 +373,13 @@ Another method that could be used instead of a SVM is tree-based classification,
 The paper suggests using ensemble learning with SVMs to do feature selection on genomic data through elimation. That is, using bootstrapping multiple SVM models are built and then aggregated to form one final model which is used to eliminate genomic features unimportant for patient classification.
 
 ##### (iii)
+Support vector machine with a linear kernel will now be used to predict whether a child that has been successfully treated against leukemia later relapsed or not. 
 
 ```{r 4b3, echo=TRUE, eval=TRUE}
-svm.leukemia.linear <- svm(Category~., data = d.leukemia.train, kernel = "linear", cost = 1, scale = TRUE)
-
+svm.leukemia.linear <- svm(Category~., data = d.leukemia.train, kernel = "linear", 
+                           cost = 1, scale = TRUE)
+```
+```{r 4b4, echo=FALSE, eval=TRUE}
 #training error
 y.leukemia.train <- predict(svm.leukemia.linear, newdata = d.leukemia.train)
 table.leukemia.train <- table(Predicted_train = y.leukemia.train, Truth_train = d.leukemia.train$Category)
@@ -410,16 +390,18 @@ y.leukemia.test <- predict(svm.leukemia.linear, newdata = d.leukemia.test)
 table.leukemia.test <- table(Predicted_test = y.leukemia.test, Truth_test = d.leukemia.test$Category)
 table.leukemia.test
 ```
-The training misclassification error rate for the support vector classifier with linear kernel using $C=1$ is ``r round(1 - sum(diag(table.leukemia.train))/sum(table.leukemia.train),3)`` and the test misclassification error is ``r round(1 - sum(diag(table.leukemia.test))/sum(table.leukemia.test),3)``. It is not surprising that the training error rate is equal to zero, since the number of covariates are much bigger then the number of observations. Meaning that we are guaranteed to find a separating hyperplane. This can result in overfitting. (usikker på om vi skal ha med den siste setningen...)
+The training misclassification error rate for the support vector classifier with linear kernel using $C=1$ is ``r round(1 - sum(diag(table.leukemia.train))/sum(table.leukemia.train),3)`` and the test misclassification error is ``r round(1 - sum(diag(table.leukemia.test))/sum(table.leukemia.test),3)``. It is not surprising that the training error rate is equal to zero, since the number of covariates are much bigger then the number of observations. Meaning that we are guaranteed to find a separating hyperplane.
 
-From the confusion for the test set, we can see that the most errors are due to classifying children that have been successfully treated against leukeima and later relapse as non-relapse, i.e. the most common type of error is Type-?-error. It is more important to classify all of the children who are going to relapse correctly, than the children who are not going to relapse. Hence, we do not think this classification method is successful.  
+From the confusion table for the test set, we can see that the most errors are due to classifying children that have been successfully treated against leukemia and later relapse as non-relapse, i.e. the most common type of error is false negative. It is more important to classify all of the children who are going to relapse correctly, than the children who are not going to relapse. Hence, we do not think this classification method is successful.  
 
 ##### (iv)
-
-```{r 4b4, echo=TRUE, eval=TRUE}
+Now, the analysis will be repeated twice using the radial kernel
+```{r 4b5, echo=TRUE, eval=TRUE}
 #C = 1, gamma = 10^-2
-svm.leukemia.radial1 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-2), scale = TRUE)
-
+svm.leukemia.radial1 <- svm(Category~., data = d.leukemia.train, kernel = "radial", 
+                            cost = 1, gamma = 10^(-2), scale = TRUE)
+```
+```{r 4b6, echo=FALSE, eval=TRUE}
 #training error
 y.leukemia.train1 <- predict(svm.leukemia.radial1, newdata = d.leukemia.train)
 table.leukemia.train1 <- table(Predicted_train = y.leukemia.train1, Truth_train = d.leukemia.train$Category)
@@ -433,10 +415,12 @@ table.leukemia.test1
 ```
 The training misclassification error rate for the support vector classifier with radial kernel using $C=1$ and $\gamma = 10^{-2}$ is ``r round(1 - sum(diag(table.leukemia.train1))/sum(table.leukemia.train1),3)`` and the test misclassification error rate is ``r round(1 - sum(diag(table.leukemia.test1))/sum(table.leukemia.test1), 3)``. 
 
-```{r 4b5, echo=TRUE, eval=TRUE}
+```{r 4b7, echo=TRUE, eval=TRUE}
 #C = 1, gamma = 10^-5
-svm.leukemia.radial2 <- svm(Category~., data = d.leukemia.train, kernel = "radial", cost = 1, gamma = 10^(-5), scale = TRUE)
-
+svm.leukemia.radial2 <- svm(Category~., data = d.leukemia.train, kernel = "radial", 
+                            cost = 1, gamma = 10^(-5), scale = TRUE)
+```
+```{r 4b8, echo=FALSE, eval=TRUE}
 #training error
 y.leukemia.train2 <- predict(svm.leukemia.radial2, newdata = d.leukemia.train)
 table.leukemia.train2 <- table(Predicted_train = y.leukemia.train2, Truth_train = d.leukemia.train$Category)
@@ -449,53 +433,50 @@ table.leukemia.test2
 ```
 For the support vector classifier with radial kernal using $C = 1$ and $\gamma = 10^{-5}$, the training misclassification error rate is ``r round(1 - sum(diag(table.leukemia.train2))/sum(table.leukemia.train2),3)`` and the test misclassification error rate is ``r round(1 - sum(diag(table.leukemia.test2))/sum(table.leukemia.test2),3)``.
 
-Both of the support vector classifiers with radial kernel, classify all the children in the test set as non-relapse. Since training misclassification error rate for the support vector classifier using $\gamma = 10^{-2}$ is $0$, is this classifier most likely overfitted. On the other hand, the support vector classifier using $\gamma = 10^{-5}$ classify all the children in the training set as non-relapse as well. This corresponds well with the fact that a smaller $\gamma$ leads to the decision boundaries to be smoother, i.e. with a smaller $\gamma$ overfitting will be less likely. In our case the support vecto classifier with linear kernel will be the best classifier, since the training misclassification rate is smaller and it is able to classify some of the children who relapse correctly. 
+Both of the support vector classifiers with radial kernel, classify all the children in the test set as non-relapse. Since training misclassification error rate for the support vector classifier using $\gamma = 10^{-2}$ is $0$, is this classifier most likely overfitted. On the other hand, the support vector classifier using $\gamma = 10^{-5}$ classify all the children in the training set as non-relapse as well. This corresponds well with the fact that a smaller $\gamma$ leads to the decision boundaries to be smoother, i.e. with a smaller $\gamma$ overfitting will be less likely. In our case the support vector classifier with linear kernel will be the best classifier, since the training misclassification rate is smaller and it is able to classify some of the children who relapse correctly. 
 
-### c)
+### c) Inner product representation of the polynomial kernel
 
 The polynomial kernel for the feature space with inputs $X_1$ and $X_2$ and degree $d=2$ is 
 \begin{align*}
-  K(\boldsymbol{x}_i, \boldsymbol{x}_{i'}) &=(1+\sum_{j=1}^2x_{ij}x_{i'j})^2 = (1 + x_{i1}x_{i'1} + x_{i2}x_{i'2})^2 \\
+  K(\boldsymbol{x}_i, \boldsymbol{x'}_{i}) &=(1+\sum_{j=1}^2x_{ij}x_{i'j})^2 = (1 + x_{i1}x_{i'1} + x_{i2}x_{i'2})^2 \\
   &= 1 + 2x_{i1}x_{i'1} + 2x_{i2}x_{i'2} + (x_{i1}x_{i'1})^2 + 2x_{i1}x_{i'1}x_{i2}x_{i'2} + (x_{i2}x_{i'2})^2.
 \end{align*}
-This can be written as 
+This can be written in terms of an inner product as 
 \begin{align*}
-    K(\boldsymbol{x}_i, \boldsymbol{x}_{i'}) &= h_1(x)h_1(x') + h_2(x)h_2(x') + h_3(x)h_3(x') + h_4(x)h_4(x') + h_5(x)h_5(x') + h_6(x)h_6(x') \\
-    &= \sum_{j=1}^6 h_j(x)h_j(x') = \langle h(x),h(x') \rangle,
+    K(\boldsymbol{x}_i, \boldsymbol{x'}_{i}) &= h_1(x_i)h_1(x'_i) + h_2(x_i)h_2(x'_i) + h_3(x_i)h_3(x'_i) + h_4(x_i)h_4(x'_i) + h_5(x_i)h_5(x'_i) + h_6(x_i)h_6(x'_i) \\
+    &= \sum_{j=1}^6 h_j(x_i)h_j(x'_i) = \langle h(x_i),h(x'_i) \rangle,
 \end{align*}
-
 where 
 \begin{align*}
-    h_1(x)h_1(x') &= 1 \implies h_1(x) = 1 \\
-    h_2(x)h_2(x') &= 2x_{i1}x_{i'1} \implies h_2(x) = \sqrt{2}x_{i1}\\
-    h_3(x)h_3(x') &= 2x_{i2}x_{i'2}  \implies h_3(x) = \sqrt{2}x_{i2}\\
-    h_4(x)h_4(x') &= x_{i1}^2x_{i'1}^2 \implies h_4(x) = x_{i1}^2\\
-    h_5(x)h_5(x') &= 2x_{i1}x_{i2}x_{i'1}x_{i'2} \implies h_5(x) = \sqrt{2}x_{i1}x_{i2}\\
-    h_6(x)h_6(x') &= x_{i2}^2x_{i'2}^2 \implies h_6(x) = x_{i2}^2.
+    h_1(x_i)h_1(x'_i) &= 1 \implies h_1(x_i) = 1 \\
+    h_2(x_i)h_2(x'_i) &= 2x_{i1}x_{i'1} \implies h_2(x_i) = \sqrt{2}x_{i1}\\
+    h_3(x_i)h_3(x'_i) &= 2x_{i2}x_{i'2}  \implies h_3(x_i) = \sqrt{2}x_{i2}\\
+    h_4(x_i)h_4(x'_i) &= x_{i1}^2x_{i'1}^2 \implies h_4(x_i) = x_{i1}^2\\
+    h_5(x_i)h_5(x'_i) &= 2x_{i1}x_{i2}x_{i'1}x_{i'2} \implies h_5(x_i) = \sqrt{2}x_{i1}x_{i2}\\
+    h_6(x_i)h_6(x'_i) &= x_{i2}^2x_{i'2}^2 \implies h_6(x_i) = x_{i2}^2.
 \end{align*}
+So, $h(X) = (1, \sqrt{2}X_{1}, \sqrt{2}X_{2}, X_{1}^2, \sqrt{2}X_{1}X_{2},  X_{2}^2)$.
 
 # Problem 5
  
-### a)
+### a) Multiple choice 5
 (i) TRUE
 (ii) FALSE
 (iii) FALSE
 (iv) FALSE 
 
 
-### b)
+### b) K-means clustering
 ##### (i)
 First, we randomly assign a cluster to each observation and obtain the following plot. 
 
-```{r 5b1, echo=FALSE, eval=TRUE}
+```{r 5b1, echo=TRUE, eval=TRUE, fig.align="center"}
 set.seed(1)
 x1 = c(1, 2, 0, 4, 5, 6)
 x2 = c(5, 4, 3, 1, 1, 2)
-
 n = 6
 K = 2
-
-
 
 clusters = sample(1:K, n, replace = TRUE)
 df = data.frame(x1,x2,clusters = as.factor(clusters))
@@ -505,21 +486,25 @@ ggplot(df, aes(x1,x2, color=clusters)) +geom_point()
 ##### (ii)
 Secondly, we calculate the centroids for each cluster and add them to the plot. 
 
-```{r 5b2, echo=FALSE, eval=TRUE}
+```{r 5b2, echo=TRUE, eval=TRUE, fig.align="center"}
 centroid.cluster1_x1 = mean(df$x1[df$clusters == 1])
 centroid.cluster1_x2 = mean(df$x2[df$clusters == 1])
 centroid.cluster2_x1 = mean(df$x1[df$clusters == 2])
 centroid.cluster2_x2 = mean(df$x2[df$clusters == 2])
 
-df.centroid = data.frame(x1 = c(centroid.cluster1_x1, centroid.cluster2_x1), x2 =c(centroid.cluster1_x2, centroid.cluster2_x2), clusters = as.factor(c(1,2)))
+df.centroid = data.frame(x1 = c(centroid.cluster1_x1, centroid.cluster2_x1), 
+                         x2 = c(centroid.cluster1_x2, centroid.cluster2_x2), 
+                         clusters = as.factor(c(1,2)))
 
-ggplot() + geom_point(data = df, aes(x1,x2, color=clusters)) + geom_point(data = df.centroid, aes(x1,x2, fill = clusters), size = 5, shape = 21, color = "black")
+ggplot() + geom_point(data = df, aes(x1,x2, color=clusters)) + 
+  geom_point(data = df.centroid, aes(x1,x2, fill = clusters), 
+             size = 5, shape = 21, color = "black")
 ```
 
 ##### (iii)
-Lastly, we assign the observations new clusters based on which centroid is closest in euclidain distance and obtain the following plot.
+Lastly, we assign the observations new clusters based on which centroid is closest in euclidean distance and obtain the following plot.
 
-```{r 5b3, echo=FALSE, eval=TRUE}
+```{r 5b3, echo=TRUE, eval=TRUE, fig.align="center"}
 for (i in 1:n){
   euclid.cluster1 = (df$x1[i] - df.centroid$x1[1])^2 + (df$x2[i] - df.centroid$x2[1])^2
   euclid.cluster2 = (df$x1[i] - df.centroid$x1[2])^2 + (df$x2[i] - df.centroid$x2[2])^2
@@ -534,7 +519,7 @@ for (i in 1:n){
 ggplot() + geom_point(data = df, aes(x1,x2, color=clusters))
 ```
 
-### c)
+### c) Hierarchical clustering
 ```{r 5c1, echo=FALSE, eval=TRUE}
 id <- "1VfVCQvWt121UN39NXZ4aR9Dmsbj-p9OU" # google file ID
 GeneData <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=F)
@@ -545,9 +530,7 @@ GeneData = t(GeneData)
 GeneData <- scale(GeneData)
 ```
 
-The following code shows how hierarchical clustering with complete, single and average linkage was implemented both using Euclidean distance and correlation-based distance. 
-
-```{r 5c2, echo=TRUE, eval=TRUE}
+```{r 5c2, echo=FALSE, eval=TRUE}
 #hierarchical clustering Euclidean distance
 CE_hclust = hclust(dist(GeneData), method = "complete")
 SE_hclust = hclust(dist(GeneData), method = "single")
@@ -560,62 +543,57 @@ SC_hclust = hclust(correlation_dist, method = "single")
 AC_hclust = hclust(correlation_dist, method = "average")
 ```
 
-The following plot shows dendrograms for the investigated choices for linkage and distance. 
-```{r 5c3,echo=FALSE,eval=TRUE, fig.height=6, fig.width=8, fig.align="center"}
+The following plot shows dendrograms obtained from hierarchical clustering with complete, single and average linkage for both Euclidean distance and correlation-based distance.
+
+```{r 5c3,echo=FALSE,eval=TRUE, fig.height=6, fig.width=9, fig.align="center"}
 #plot of the dendrograms
 par(mfrow=c(2,3))
 plot(CE_hclust, main = "Complete Linkage, Euclidean", xlab = "", sub = "", cex=.9)
 plot(SE_hclust, main = "Single Linkage, Euclidean", xlab = "", sub = "", cex=.9)
 plot(AE_hclust, main = "Average Linkage, Euclidean", xlab = "", sub = "", cex=.9, xlim = c(40,50))
 
-plot(CC_hclust, main = "Complete Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
-plot(SC_hclust, main = "Single Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
-plot(AC_hclust, main = "Average Linkage, Correlation-based distance", xlab = "", sub = "", cex=.9)
+plot(CC_hclust, main = "Complete Linkage, Correlation-based", xlab = "", sub = "", cex=.9)
+plot(SC_hclust, main = "Single Linkage, Correlation-based", xlab = "", sub = "", cex=.9)
+plot(AC_hclust, main = "Average Linkage, Correlation-based", xlab = "", sub = "", cex=.9)
 ```
-
-
 
 #### d) 
 Based on the dendrograms from c), the tissues were clustered into two groups the following way.  
 ```{r 5d, echo=TRUE, eval=TRUE}
 #cut the clusters in two groups
-CE_2groups =  cutree(CE_hclust, 2)
-SE_2groups =  cutree(SE_hclust, 2)
-AE_2groups =  cutree(AE_hclust, 2)
+CE_2groups = cutree(CE_hclust, 2)
+SE_2groups = cutree(SE_hclust, 2)
+AE_2groups = cutree(AE_hclust, 2)
 CC_2groups = cutree(CC_hclust, 2)
 SC_2groups = cutree(SC_hclust, 2)
 AC_2groups = cutree(AC_hclust, 2)
 ```
-For all the six combinations of linkages and distance measures, the tissues were clustered into groups that coincide with whether the tissues came from a healthy patient group or the tissues came from a diseased patient group (muligens litt rar setning). Hence, all the hierarchical clustering methods performed equally good and there is no hierarchical clustering method that stands out as the best. 
+For all the six combinations of linkages and distance measures, the tissues were clustered into two groups that coincide with whether the tissues came from a healthy patient or a diseased patient. From the dendrograms above, we see that all the methods are able to correctly cluster the two groups of  tissues from the patients. Hence, all the hierarchical clustering methods performed equally good and there is no hierarchical clustering method that stands out as the best. 
 
-%legge inn kode som presenterer the two clusters in each case in a fifi way. 
-
-
-
-### e)
+### e) Principal components analysis
 ##### (i)
-```{r 5e1, echo=FALSE, eval=TRUE}
+The samples are plotted based on the first and second principal component. 
+
+```{r 5e1, echo=TRUE, eval=TRUE, fig.align="center", fig.height=3, fig.width=3.5}
 pca.GeneData <- prcomp(GeneData,scale = TRUE) 
-
-#i)
 HvD <- c(rep(1,20),rep(2,20))
-
 autoplot(pca.GeneData, data = GeneData,col=c("red","blue")[HvD],label=TRUE)
-
 ```
 
 ##### (ii)
-```{r 5e2, echo =FALSE,eval=TRUE}
+Now, we want to determine how much of the variance in the dataset the first five principal components explain.
+
+```{r 5e2, echo=TRUE,eval=TRUE}
 pca.var <- pca.GeneData$sdev^2
 pve <- pca.var/sum(pca.var)
 explained_var <- sum(pve[1:5])
 ```
 The first 5 PCs explain `r round(explained_var*100,2)`% of the variance. 
 
-### f)
-From the plot of the two first principal components, we see that the groups differ a lot along the first principal component.To find the genes that vary the most across the two groups we can therefore look at the genes that contribute the most to the first principal component.
+### f) Principal component analysis
+From the plot of the two first principal components, we see that the groups differ a lot along the first principal component. To find the genes that vary the most across the two groups we can therefore look at the genes that contribute the most to the first principal component.
 
-```{r 5f1, echo =FALSE,eval=TRUE}
+```{r 5f1, echo =TRUE,eval=TRUE}
 PC1.loadings <- pca.GeneData$rotation[,1]
 high_var <- sort(abs(PC1.loadings),decreasing = TRUE)
 ```
