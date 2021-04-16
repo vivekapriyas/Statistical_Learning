@@ -471,7 +471,7 @@ So, $h(X) = (1, \sqrt{2}X_{1}, \sqrt{2}X_{2}, X_{1}^2, \sqrt{2}X_{1}X_{2},  X_{2
 ##### (i)
 First, we randomly assign a cluster to each observation and obtain the following plot. 
 
-```{r 5b1, echo=TRUE, eval=TRUE, fig.align="center"}
+```{r 5b1, echo=TRUE, eval=TRUE, fig.align="center", fig.height=3, fig.width=4}
 set.seed(1)
 x1 = c(1, 2, 0, 4, 5, 6)
 x2 = c(5, 4, 3, 1, 1, 2)
@@ -486,7 +486,7 @@ ggplot(df, aes(x1,x2, color=clusters)) +geom_point()
 ##### (ii)
 Secondly, we calculate the centroids for each cluster and add them to the plot. 
 
-```{r 5b2, echo=TRUE, eval=TRUE, fig.align="center"}
+```{r 5b2, echo=TRUE, eval=TRUE, fig.align="center", fig.height=3, fig.width=4}
 centroid.cluster1_x1 = mean(df$x1[df$clusters == 1])
 centroid.cluster1_x2 = mean(df$x2[df$clusters == 1])
 centroid.cluster2_x1 = mean(df$x1[df$clusters == 2])
@@ -504,7 +504,7 @@ ggplot() + geom_point(data = df, aes(x1,x2, color=clusters)) +
 ##### (iii)
 Lastly, we assign the observations new clusters based on which centroid is closest in euclidean distance and obtain the following plot.
 
-```{r 5b3, echo=TRUE, eval=TRUE, fig.align="center"}
+```{r 5b3, echo=TRUE, eval=TRUE, fig.align="center", fig.height=3, fig.width=4}
 for (i in 1:n){
   euclid.cluster1 = (df$x1[i] - df.centroid$x1[1])^2 + (df$x2[i] - df.centroid$x2[1])^2
   euclid.cluster2 = (df$x1[i] - df.centroid$x1[2])^2 + (df$x2[i] - df.centroid$x2[2])^2
@@ -568,7 +568,34 @@ CC_2groups = cutree(CC_hclust, 2)
 SC_2groups = cutree(SC_hclust, 2)
 AC_2groups = cutree(AC_hclust, 2)
 ```
-For all the six combinations of linkages and distance measures, the tissues were clustered into two groups that coincide with whether the tissues came from a healthy patient or a diseased patient. From the dendrograms above, we see that all the methods are able to correctly cluster the two groups of  tissues from the patients. Hence, all the hierarchical clustering methods performed equally good and there is no hierarchical clustering method that stands out as the best. 
+```{r 5d2, echo=FALSE, eval=TRUE}
+TrueTissue <- c(rep("H",20),rep("D",20))
+CE_2groups[CE_2groups == 1] = "H"
+CE_2groups[CE_2groups == 2] = "D"
+
+SE_2groups[SE_2groups == 1] = "H"
+SE_2groups[SE_2groups == 2] = "D"
+
+AE_2groups[AE_2groups == 1] = "H"
+AE_2groups[AE_2groups == 2] = "D"
+
+CC_2groups[CC_2groups == 1] = "H"
+CC_2groups[CC_2groups == 2] = "D"
+
+SC_2groups[SC_2groups == 1] = "H"
+SC_2groups[SC_2groups == 2] = "D"
+
+AC_2groups[AC_2groups == 1] = "H"
+AC_2groups[AC_2groups == 2] = "D"
+
+table(CE_2groups, TrueTissue)
+#table(SE_2groups, TrueTissue)
+#table(AE_2groups, TrueTissue)
+#table(CC_2groups, TrueTissue)
+#table(SC_2groups, TrueTissue)
+#table(AC_2groups, TrueTissue)
+```
+For all the six combinations of linkages and distance measures, the tissues were clustered into two groups that coincide with whether the tissues came from a healthy patient or a diseased patient. All methods were able to correctly cluster the two groups of  tissues from the patients. This is shown in the table for the hierarchical clustering using complete linkages and euclidean distance, and was also the case for all the other methods, which can be seen in the dendrograms above. Hence, all the hierarchical clustering methods performed equally good and there is no hierarchical clustering method that stands out as the best. 
 
 ### e) Principal components analysis
 ##### (i)
